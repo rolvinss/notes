@@ -1,21 +1,1031 @@
-import React, {Component, Fragment} from 'react';
-import FeaturesGridwallComponent from "../../../components/FeaturesGridwall/FeaturesGridwall/FeaturesGridwallComponent";
+import React, { Component, Fragment } from "react";
+import { compose } from "redux";
+import { connect } from "react-redux";
+import { Modal, ModalBody, ModalTitle } from "@vds/modals";
+import withRouterV6 from "../../../components/hoc/withRouterV6";
+import produce from "immer";
+import _ from "lodash";
+import "./FeaturesGridwallComponent.css";
+import "../../DeviceGridwall/ShopNavigation/ShopNavigation.css";
+import Alert from "@vz-soe-utils/alert";
+import {Icon as VdsIcon} from "@vds/icons";
+import { Notification } from '@vds3/notifications';
+import ShopNavigation from "../../DeviceGridwall/ShopNavigation/ShopNavigation";
+import featuresSaga from "../../../pages/FeaturesGridwall/saga";
+import { ActionIndicator, LevelType, SortByType, UpdateFeatureSource } from "../../../pages/FeaturesGridwall/constants";
+import * as actions from "../../../pages/FeaturesGridwall/actions";
+import * as consts from "../../../pages/FeaturesGridwall/constants";
+import * as landingActions from "../../../pages/Landing/actions";
+import * as appMessageActions from "../../../components/common/AppMessage/actions";
+import injectReducer from "../../../utils/injectReducer";
+import reducer from "../../../pages/FeaturesGridwall/reducer";
+import { createStructuredSelector } from "reselect";
+import {
+  makeSelectLanding,
+  getConflictsData,
+  conflictsCallSuccess,
+  conflictsCallFailed,
+  getActiveMtn,
+  getIsCustomerFromTMPRestrictedState
+} from "../../../pages/Landing/selectors";
+import { selectItemsInfo } from "../../common/MiniCart/CartIcon/selectors";
+import * as FeaturesSelector from "../../../pages/FeaturesGridwall/selectors";
+import * as FeaturesService from "../../../pages/FeaturesGridwall/feature-service";
+import * as StringUtils from "../../../pages/FeaturesGridwall/utils/string-utils";
+import injectSaga from "../../../utils/injectSaga";
+import INJECTOR_KEYS from "../../../services/InjectorKeyService";
+import * as appLoaderActions from "../../common/AppLoader/actions";
+import * as scService from "../../../services/site-catalyst/site-catalyst-1.0.service";
+import { isInternetExplorer } from "../../../services/dom.service"
+import { Button } from "@vds/buttons";
+import { DropdownSelect } from "@vds/selects";
+import * as taggingConstants from '../../../pages/common/tagging/constants';
+import * as taggingActions from "../../../pages/common/tagging/actions"
+import AsyncComponent from "../../common/AsyncComponent";
+import {getDoortoDoorExitingCustomer, getFiveGProfInstallCharges } from "../../App/selectors";
+import { HttpService } from "../../../services/HttpService";
+import { API_ACCESSORY_GETDETAILS_URL } from "../../../pages/AccessoryPDP/constants";
+import { getSelectedStoreWHWDetails } from "../../ISPU/ispu-store-search/selectors";
+import { getWhwPlusExtenderQuant ,appleMutualIds,mutualIdLabelText} from "../../../pages/FeaturesGridwall/selectors";
 
-class FeaturesGridwall extends Component {   
-    render() {
-        const { legacyCloudFeatures = [], bannerYTTVContentData = {} } = this.props || {};
-        return (
-            <Fragment>
-                <FeaturesGridwallComponent legacyCloudFeatures={legacyCloudFeatures} bannerYTTVContentData={bannerYTTVContentData}/>
-            </Fragment>
-        );
+
+const FeatureTile =
+AsyncComponent(() => {  return import(/* webpackChunkName: "FeatureTile"*/'../FeatureTile/FeatureTile'); });
+const FeatureDetail =
+AsyncComponent(() => {  return import(/* webpackChunkName: "FeatureDetail"*/'../FeatureDetail/FeatureDetail'); });
+const FeatureConfirmationPopup =
+AsyncComponent(() => {  return import(/* webpackChunkName: "FeatureConfirmationPopup"*/'./FeatureConfirmationPopup'); });
+const DeviceEligibility =
+AsyncComponent(() => {  return import(/* webpackChunkName: "DeviceEligibility"*/'../../Pdp/DeviceEligibility/DeviceEligibility'); });
+const ActivationFeeModal =
+AsyncComponent(() => {  return import(/* webpackChunkName: "ActivationFeeModal"*/'./ActivationFeeModal'); });
+
+export class FeaturesGridwallComponent extends Component {
+
+  state = {
+    levels: [],
+    sortByTypes: [],
+    showDetailsPopup: false,
+    showFeatureConfirmationPopup: false,
+    selFeature: null,
+    showDeviceEligibilityPopup: false,
+    eligibilityFeatureIndex: null,
+    // showConflicts: false,
+    // acceptClicked: false,
+    isFeatureAddedToCart: false,
+    isFeatureAddedToRedis: false,
+    updateObj:null,
+    showActivationFeeModal: false,
+    vzProtectEligibleFeature: [],
+    showLegalMessageModal: false,
+    // isExtenderForWHW: false,
+    ispuItem: false,
+    depletionType: '',
+    showBannerModal:false,
+    showWHWNoInventoryBanner: false,
+    cartItem: []
+  };
+
+  handleshowModal = (value) =>{
+    this.setState({showBannerModal:value})
+  }
+  
+  showActivationModal = () => {
+    this.setState({
+      showActivationFeeModal: true
+    })
+  }
+
+  closeActivationModal = () => {
+    this.setState({
+      showActivationFeeModal: false
+    })
+  }
+
+  hideLegalMessageModal = () => {
+    this.setState({
+      showLegalMessageModal: false
+    })
+  }
+
+  legalMessageModal = (updateObj) => {
+    return (
+    <div className="legalMessageContainer">
+      <div className="legalMessage">
+          <p className="bold u-paddingTopMedium u-paddingXMedium">Confirmation</p>
+          <p className="u-paddingTopLarge u-paddingXMedium">
+            By removing this Multi-Device Protection, you are choosing to decline device protection and you will have no device protection plan on any devices on your account. If your devices are lost, stolen, damaged (including liquid damage), or experience a post-warranty defect, you could potentially pay the full retail price to replace them.
+          </p>
+          <div className="footerButton u-paddingAllLarge legalMessageModal-footer">
+              <div className="legalMessageModal-footer-row">
+                  <div className="footerRight">
+                    <div className="u-marginRightSmall">
+                      <Button data-track="yes" secondary onClick={() => this.updateFeatures(updateObj)}>Yes</Button>
+                    </div>  
+                    <Button data-track="no" secondary onClick={() => {
+                      this.hideLegalMessageModal();
+                      if (this.state.resetAction) {
+                        this.state.resetAction();
+                      }
+                      }}>No</Button>
+                 </div>
+              </div>
+          </div>
+      </div>
+  </div>
+  );
+  }
+
+  handleCloseIcon = () => {
+    this.props?.WHWInventoryCheck(false);
+    this.setState({showWHWNoInventoryBanner:false});
+  } 
+  render() {
+     const userFirstName = this.props.landing ? _.get(this.props.landing, "customerInfo.customerName.firstName") : null;
+     
+    const {
+      featuresState: {
+        searchText,
+        featuresloading,
+        subscriptionsloading
+      } = {},
+      filteredFeatures = [],
+      recommendations = [],
+      productOptions = [],
+      selSortByType,
+      selProductId,
+      conflictsData,
+    } = this.props;
+
+    const showRecommendations = (!searchText
+      && (selSortByType === SortByType.VIEW_ALL || selSortByType === SortByType.SHOWCASE)
+      && (selProductId === consts.VIEW_ALL)
+      && recommendations && recommendations.length > 0) ? true : false;
+
+      const selectedFeaturesListArray = this.props.landing?.cartDetails?.lineInfo && this.props.landing?.cartDetails?.lineInfo.length > 0 && this.props.landing?.cartDetails?.lineInfo[0]?.serviceInfo?.selectedFeaturesList?.visFeature || [];
+     let catCode = ""
+     selectedFeaturesListArray?.map(data =>{
+      if(data?.categoryCodes?.includes("WHWBASIC")){
+        catCode = "WHWBASIC";
+      }
+     })
+     this.props?.filteredFeatures?.map( data =>{
+      if(data?.actionIndicator === "A" && data?.categoryCodes?.includes("WHWPLUS")){
+        catCode = "WHWPLUS";
+      }
+     })
+    const {
+      showDetailsPopup,
+      showDeviceEligibilityPopup,
+      showFeatureConfirmationPopup
+    } = this.state;
+
+    if (selSortByType === SortByType.SUBSCRIPTIONS) {
+      if (subscriptionsloading) {
+        this.props.showAppLoader();
+      } else {
+        this.props.hideAppLoader();
+      }
     }
+
+    const showNoFeaturesTxt = !featuresloading && !(selSortByType === SortByType.SUBSCRIPTIONS && subscriptionsloading);
+    const isD2D = (this.props?.doorTodoorExitingCustomer === 'true')?true:false;
+    // Added for Post to Pre Story
+    const isPrePay = this.props?.landing?.cartDetails?.orderDetails?.isPrePayCart === "Y" ? true : false;
+    const sortByTypes = isPrePay ? this.state.sortByTypes && this.state.sortByTypes.length > 0 && this.state.sortByTypes.filter(sortType => sortType.value !== "SUBSCRIPTIONS") : this.state.sortByTypes && this.state.sortByTypes.length > 0 && this.state.sortByTypes;
+    const isWHWSPO = this.props.filteredFeatures && this.props.filteredFeatures.length > 0 && this.props.filteredFeatures?.some((feature) => feature?.categoryCodes && feature?.categoryCodes?.length > 0 && feature?.categoryCodes?.includes("MUTEXWHW"));
+    return (
+      <Fragment>
+
+        <ShopNavigation
+          landing={this.props.landing}
+          mtn={this.props.landing.activeMtn}
+          //onSkuSearch={(searchText) => this.onSearchTxtChange(searchText)}
+          searchTxt={searchText}
+          onSearchTxtChange={(searchText) => this.onSearchTxtChange(searchText)}
+          path='feature'
+          initConflictsCall={this.props.initConflictsCall}
+          conflictsData={this.props.conflictsData}
+          conflictsCallFailed={this.props.conflictsCallFailed}
+          conflictsCallSuccess={this.props.conflictsCallSuccess}
+          isFeatureAddedToCart={this.props.featuresState.isFeatureAddedToCart}
+          isFeatureAddedToRedis={this.props.featuresState.isFeatureAddedToRedis}
+          addFeaturesToCart={() => this.addFeaturesToCart()}
+          addFeaturesToCartWithoutConflict={() => this.addFeaturesToCartWithoutConflict()}
+          onBackBtnClick={() => this.onBackBtnClick()}
+        />
+        {conflictsData && conflictsData.length == 0 &&
+        <div className="FeaturesGridwall" data-testid="FeaturesGridwall">
+
+          <div>
+
+            {/* Filter section: START */}
+            <div
+              className="PrimaryFilterBar featureFilterBar u-paddingRightMedium u-paddingLeftMedium u-paddingBottomMedium u-paddingTopSmall SearchBar padding_left_tab">
+              <div className="u-displayInlineBlock u-paddingRightLarge u-marginRightLarge Width_20">
+                <div id="level" className="Label">Level</div>
+                <DropdownSelect
+                  aria-labelledby="level"
+                  placeholder="Select Level"
+                  value={this.props.selLevel}
+                  aria-required={true}
+                  //options={this.state.levels}
+                  onChange={event => this.onLevelChange(event)}
+                  width={"173px"}
+                >
+                  {this.state.levels &&
+                    this.state.levels.length > 0 &&
+                    this.state.levels.map((option, index) => (
+                      <option data-track= {option.value} key={index} value={option.value}>
+                        {option.label}{" "}
+                      </option>
+                    ))}
+                </DropdownSelect>
+              </div>
+
+              {this.props.selLevel === LevelType.LINE_LEVEL &&
+              <div className="u-displayInlineBlock u-paddingRightLarge u-marginRightLarge Width_20">
+                <Fragment>
+                  <div className="Label" id="mdn">MDN</div> 
+                  <DropdownSelect
+                    placeholder="Select MTN"
+                    aria-labelledby="mdn"
+                    value={this.props.selMTN}
+                    aria-required={true}
+                    //options={this.props.mtnOptions}
+                    onChange={event => this.onMTNChange(event)}
+                    disabled ={isD2D}
+                    width="173px"
+                    className="contains-PII"
+                  >
+                    {this.props.mtnOptions &&
+                      this.props.mtnOptions.length > 0 &&
+                      this.props.mtnOptions.map((option, index) => (
+                        <option data-track= {option.value} key={index} value={option.value}>
+                          {option.label}{" "}
+                        </option>
+                      ))}
+                  </DropdownSelect>
+                </Fragment>
+              </div>}
+
+              <div className="u-displayInlineBlock u-paddingRightLarge u-marginRightLarge Width_20">
+                <div className="Label" id="sortby">Sort by</div>
+                <DropdownSelect
+                  placeholder="Select Sort by"
+                  aria-labelledby="sortby"
+                  value={this.props.selSortByType}
+                  aria-required={true}
+                  //options={this.state.sortByTypes}
+                  onChange={event => this.onSortByTypeChange(event)}
+                  width="173px"
+                >
+                  {sortByTypes &&
+                    sortByTypes.length > 0 &&
+                    sortByTypes.map((option, index) => (
+                      <option data-track= {option.value} key={index} value={option.value}>
+                        {option.label}{" "}
+                      </option>
+                    ))}
+                </DropdownSelect>
+              </div>
+
+              <div className="u-displayInlineBlock u-paddingRightLarge u-marginRightLarge Width_20">
+                <div className="Label" id="filter">Filter by product</div>
+                <DropdownSelect
+                  placeholder="Select Product"
+                  aria-labelledby="filter"
+                  value={selProductId}
+                  aria-required={true}
+                  //options={productOptions}
+                  onChange={event => this.onProductChange(event)}
+                  width="173px"
+                >
+                  {productOptions &&
+                    productOptions.length > 0 &&
+                    productOptions.map((option, index) => ( 
+                      <option data-track={option.label}  key={index} value={option.value}>
+                        {option.label}{" "}
+                      </option>
+                    ))}
+                </DropdownSelect>
+              </div>
+
+              <div className="u-displayInlineBlock u-paddingRightMedium">
+                <a href="javascript:void(0)" className="p-link" onClick={() => this.resetFilters()} data-testId="reset">
+                 <span data-track="FeaturesGridwall-Reset"></span>
+                  Reset</a>
+              </div>
+            </div>
+            {/* Filter section: END */}
+
+
+            <div className="FeaturesGridwallBody">
+            {/* WHW Midnight ISPU Ordering Banner */}
+            { this.props.landing?.assistedFlags?.midnightWHW === "TRUE" && this.state.depletionType === "L" && isWHWSPO &&
+              <Notification
+                type='info'
+                title={[<div dangerouslySetInnerHTML={{ __html: this.props.landing?.assistedFlags?.WHWISPUTitle }} />]}
+                subtitle={[<div dangerouslySetInnerHTML={{ __html: this.props.landing?.assistedFlags?.WHWISPUSubTitle }} />]}
+                surface='light'
+                disableAnimation={false}
+                fullBleed
+                hideCloseButton={true}
+                disableFocus
+                inline={false}
+                layout={null}
+              />
+            }
+            {/* WHW Midnight Dfill Banner */}
+            { this.props.landing?.assistedFlags?.midnightWHW === "TRUE" && this.state.depletionType === "F" && isWHWSPO &&
+              <Notification
+                type='info'
+                title={[<div dangerouslySetInnerHTML={{ __html: this.props.landing?.assistedFlags?.WHWSPOsTitle }} />]}
+                subtitle={[<div dangerouslySetInnerHTML={{ __html: this.props.landing?.assistedFlags?.WHWSPOsSubTitle }} />]}
+                surface='light'
+                disableAnimation={false}
+                fullBleed
+                hideCloseButton={true}
+                disableFocus
+                inline={false}
+                layout={null}
+              />
+            }
+              {/* Recommendations: START */}
+              {showRecommendations && (
+                <div className="JustForYou addOns_JustForU">
+                  <div className="u-paddingAllMedium">
+                      <span data-track="pii_cust_name" className="u-textBold u-textExtraLarge contains-PII">
+                        {"Just for you " + (userFirstName ? userFirstName : "user")}
+                      </span>
+                      {/* <span className="u-textBold u-marginLeftMedium" onClick={this.showActivationModal} style={{ textDecoration: "underline", cursor:"pointer" }}>Activation Fee</span> */}
+                  </div>
+                  <div className="GridwallTile-Wrapper">                 
+                    {recommendations.map(feature => (                
+                      <FeatureTile
+                        key={feature.sorId}
+                        assistedFlags={this.props.landing?.assistedFlags}
+                        mutualIdLabelText={this.props.mutualIdLabelText}
+                        getMutualLabelText={this.props.getMutualLabelText}
+                        appleMutualIds={this.props.appleMutualIds}
+                        getMutualIds={this.props.getMutualIds}
+                        depletionType={this.state.depletionType}
+                        ispuItem={this.state.ispuItem}
+                        whwPlusExtenderQuant = {(whwPlusExtenderQuant) => this.whwPlusExtenderQuant(whwPlusExtenderQuant)}
+                        feature={feature}
+                        featuresState={this.props.featuresState.isFeatureUpdateFailed}
+                        isRecommendation={true}
+                        updateFeatures={(updateObj) => this.updateFeatures(updateObj)}
+                        viewFeatureDetail={(showPopup, selFeature) => this.viewFeatureDetail(showPopup, selFeature)}
+                        showDeviceEligibility={(event, sorId) => this.showDeviceEligibility(event, sorId)}
+                        toggleFeatureConfirmationPopup={(updateObj) => this.setState({ showFeatureConfirmationPopup: !this.state.showFeatureConfirmationPopup, updateObj: updateObj },
+                          () =>
+                        (
+                          !(isInternetExplorer() && sessionStorage.getItem("channel") === "CHAT-STORE")
+                            ? document.body.style.overflow = "hidden" : ""
+                        ))}
+                        isExtenderForWHW={this.props?.isIspuInventryAvaialble || this.props?.isDfillInventoryAvaialble}
+                       
+                        />
+                    ))}
+                  </div>
+                </div>
+              )}
+              {/* Recommendations: END */}
+              {this.state.showActivationFeeModal && <ActivationFeeModal closeModal={this.closeActivationModal} />}
+              {/* Gridwall: START */}
+              <div className="GridwallTile-Wrapper boxContainer">
+                {(filteredFeatures.length > 0) ?
+                  (filteredFeatures.map(feature => (
+                    <FeatureTile
+                      key={feature.sorId}
+                      assistedFlags={this.props.landing?.assistedFlags}
+                      appleMutualIds={this.props.appleMutualIds}
+                      getMutualIds={this.props.getMutualIds}
+                      mutualIdLabelText={this.props.mutualIdLabelText}
+                      getMutualLabelText={this.props.getMutualLabelText}
+                      depletionType={this.state.depletionType}
+                      ispuItem={this.state.ispuItem}
+                      catCode={catCode}
+                      midnightWHWFlag={this.props.landing?.assistedFlags?.midnightWHW === "TRUE"}
+                      whwPlusExtenderQuant = {(whwPlusExtenderQuant) => this.whwPlusExtenderQuant(whwPlusExtenderQuant)}
+                      feature={feature}
+                      featuresCache = {this.props.featuresCache}
+                      selMTN = {this.props.selMTN}
+                      featuresState={this.props.featuresState.isFeatureUpdateFailed}
+                      isRecommendation={false}
+                      updateFeatures={(updateObj) => this.updateFeatures(updateObj)}
+                      viewFeatureDetail={(showPopup, selFeature) => this.viewFeatureDetail(showPopup, selFeature)}
+                      showDeviceEligibility={(event, sorId) => this.showDeviceEligibility(event, sorId)}
+                      toggleLegalMessageModal={(updateObject, resetAction) => this.setState({ showLegalMessageModal: !this.state.showLegalMessageModal, updateObject: updateObject, resetAction})}
+                      toggleFeatureConfirmationPopup={(updateObj) => this.setState({
+                          showFeatureConfirmationPopup: !this.state.showFeatureConfirmationPopup, updateObj: updateObj
+                      }, () =>
+                      (
+                          !(isInternetExplorer() && sessionStorage.getItem("channel") === "CHAT-STORE") ?
+                            document.body.style.overflow = "hidden":""
+                      ))
+                      }
+                      isExtenderForWHW={this.props?.isIspuInventryAvaialble || this.props?.isDfillInventoryAvaialble}
+                      legacyFeatureList = {this.props?.legacyCloudFeatures}
+                      handleshowModal={this.handleshowModal}
+                      showModal={this.state.showBannerModal}
+                      bannerYTTVContentData={this.props?.bannerYTTVContentData}
+                      />
+                  ))) :
+                  (showNoFeaturesTxt && isPrePay ?
+                    <div className="u-paddingBottomLarge u-paddingTopLarge u-textCenter">
+                      <div
+                        className="u-textBold u-alignMiddle NoFeaturesMsg">{"No Addon's matching search criteria"}</div>
+                    </div> : (showNoFeaturesTxt &&
+                    <div className="u-paddingBottomLarge u-paddingTopLarge u-textCenter">
+                      <div
+                        className="u-textBold u-alignMiddle NoFeaturesMsg">{"No Services & perk's matching search criteria"}</div>
+                    </div>))
+                }
+              </div>
+              {/* Gridwall: END */}
+
+            </div>
+
+            {showDetailsPopup &&
+            <FeatureDetail
+              feature={this.state.selFeature}
+              assistedFlags={this.props.landing?.assistedFlags}
+              allFeatures={this.props.allFeatures}
+              depletionType={this.state.depletionType}
+              updateModalState={() => this.viewFeatureDetail(false)}
+              updateFeatures={(updateObj) => this.updateFeatures(updateObj)}
+              whwPlusExtenderQuant = {(whwPlusExtenderQuant) => this.whwPlusExtenderQuant(whwPlusExtenderQuant)}
+              showModal={showDetailsPopup}
+              featuresCache={this?.props?.featuresCache}
+              fiveGProfInstallCharges={this?.props?.fiveGProfInstallCharges}
+            />}
+
+            {showFeatureConfirmationPopup &&
+              <FeatureConfirmationPopup
+              yesCallback={(updateObj) => this.setState({ showFeatureConfirmationPopup: !this.state.showFeatureConfirmationPopup }, () => {
+                this.updateFeatures(updateObj); document.body.style.overflow = "initial";
+              })}
+              noCallback={() => this.setState({ showFeatureConfirmationPopup: !this.state.showFeatureConfirmationPopup }, () => {
+                document.body.style.overflow = "initial";
+              })}
+              updateObj={this.state.updateObj}
+              />
+            }
+
+            {this.state.showLegalMessageModal && this.legalMessageModal(this.state.updateObject)}
+            {showDeviceEligibilityPopup &&
+            <DeviceEligibility
+              showViewEligibility={showDeviceEligibilityPopup}
+              hideViewEligibility={() => this.hideDeviceEligibility()}
+              isCustomerFromTMPRestrictedState={this.props.isCustomerFromTMPRestrictedState}
+              vzProtectEligibleDevices={this.state.vzProtectEligibleFeature && this.state.vzProtectEligibleFeature.length > 0 ? this.state.vzProtectEligibleFeature[0].vzProtectEligibleDevice : []}
+            />}
+              
+          </div>
+        </div>
+        }
+        {this.state.showWHWNoInventoryBanner &&
+          <div className="noWHWInventory-banner">
+            <Alert alertType="error" showCloseIcon={false}>
+            <span className="rcError-closeIcon" onClick={() => this.handleCloseIcon()}>X</span>
+              <span>
+              <div> <VdsIcon name="error" size="medium" lineColor="black" style={{ marginRight: "10px", marginBottom: "3px" }} />Selected device is unavailable</div>
+                <div style={{ "white-space": "nowrap", "margin-left": "31px" }}>Wifi extender is out of stock. please remove the Whole Home WIFI feature and try again later.</div>
+              </span>
+            </Alert>
+          </div>}
+          <Modal
+                  className="switching-modal"
+                  ariaLabel="Clear Existing Lines"
+                  opened={this.state.showBannerModal}
+                  showModalChanged={(e) => {this.handleshowModal(e)}}
+                >
+                <ModalTitle primitive="h2">New Youtube TV subscribers save $10/mo for 12 months.</ModalTitle>
+                  <ModalBody>Offer available to Verizon Home Internet customers who are not a current or prior YouTube TV subscriber or trial user previously. Must activate YouTube TV subscription through YouTube TV w/in 90 days of new home internet activation/installation or when added to an existing internet plan. $10/month discount for 12 months on the standard subscription price, currently $72.99/mo. (subject to change); discount ends if home internet service is canceled (subscription will continue to be billed at the standard subscription price unless you cancel with YouTube TV). At the end of 12-month period you will be automatically charged the then-current standard subscription price. Must be 18 years or older. Valid form of payment required. Redeemable where YouTube TV is available. Full terms here:<a className="yt-modal-link" href="https://www.youtube.com/t/terms_paidservice" target="_blank">www.youtube.com/t/terms_paidservice.</a></ModalBody>
+                <Button className="u-text14 u-marginRightLarge yt-modal-button" onClick={()=>{this.handleshowModal(false)}}>
+              Got it
+              </Button>
+                </Modal>
+      </Fragment>
+    );
+  }
+
+  componentDidUpdate(prevProps, prevState, snapshot) {
+    if (prevProps.featuresState.addToCartDone != this.props.featuresState.addToCartDone && this.props.featuresState.addToCartDone) {
+      this.viewFeatureDetail(false);
+    }
+    if((prevProps.featuresState.showWHWNoInventoryBanner != this.props.featuresState.showWHWNoInventoryBanner) && this.props.featuresState.showWHWNoInventoryBanner){
+      this.setState({ showWHWNoInventoryBanner: true })
+    }
+  };
+
+  componentDidMount() {
+    scService.trackPageLoad({
+      screen: scService.PAGES.ADDONS
+    });
+    this.addFeaturesGridwallGuard();
+    this.initPageData();
+    const { cartDetails = {} } = this.props.landing;
+    const { lineInfo = [] } = cartDetails;
+    const activeLine = lineInfo && lineInfo.length > 0 && lineInfo.filter((line) => { return line && line.mobileNumber && line.mobileNumber === this.props.landing.activeMtn; });
+    const fiveGDetails = activeLine && activeLine.length > 0 && activeLine.filter((line) => { return line && line.deviceTypeSelected && line.deviceTypeSelected === "5G Internet"; });
+    const isFiveG = fiveGDetails && fiveGDetails.length > 0 ? true : false;
+    //const wholeHomeSPO = fiveGDetails[0]?.serviceInfo?.selectedFeaturesList?.visFeature?.filter(feature => (feature.visFeatureCode === "2625" || feature.visFeatureCode === "2626" || feature.visFeatureCode === "2627" || feature.visFeatureCode === "2628") && feature.addDeleteInd === "A" ) || [];
+    const { ispuItem = false, itemsInfo = [] } = fiveGDetails && fiveGDetails.length > 0 && fiveGDetails[0];
+    const { depletionType = '', cartItems = {} } = itemsInfo && itemsInfo.length > 0 && itemsInfo[0];
+    const { cartItem = [] } = cartItems;
+    this.setState({ ispuItem, depletionType, cartItem });
+  }
+
+  initPageData = () => {
+    this.populateLevelTypes();
+    this.populateSortByTypes();
+    this.props.initSearchCriteria();
+  };
+
+  populateLevelTypes = () => {
+    this.setState((prevState) => {
+      return produce(prevState, draft => {
+        draft.levels = [{
+          value: LevelType.LINE_LEVEL,
+          label: "Line level"
+        }, {
+          value: LevelType.ACCOUNT_LEVEL,
+          label: "Account level"
+        }];
+      });
+    });
+  };
+
+  populateSortByTypes = () => {
+    this.setState((prevState) => {
+      return produce(prevState, draft => {
+        draft.sortByTypes = [{
+          value: SortByType.VIEW_ALL,
+          label: "View all"
+        }, {
+          value: SortByType.SHOWCASE,
+          label: "Showcase"
+        }, {
+          value: SortByType.EXISTING,
+          label: "Existing"
+        }, {
+          value: SortByType.SUBSCRIPTIONS,
+          label: "Subscriptions"
+        }];
+      });
+    });
+  };
+
+  onLevelChange = (event) => {
+    const selLevel = event.target.value;
+    this.props.updateActiveLevel(selLevel);
+    this.props.onLevelChange(selLevel);
+    this.props.setProductOptions();
+  };
+
+  onMTNChange = (event) => {
+    const selMTN = event.target.value;
+    this.props.updateActiveMtn(selMTN);
+    this.props.onMTNChange(selMTN);
+    this.props.setProductOptions();
+  };
+
+  onSortByTypeChange = (event) => {
+    const selSortByType = event.target.value;
+    this.props.onSortByTypeChange(selSortByType);
+    this.props.setProductOptions();
+  };
+
+  onProductChange = (event) => {
+    const selProductId = event.target.value;    
+    this.props.onProductChange(selProductId);
+    this.props.formulateFeatureData();
+  };
+
+  onSearchTxtChange = (searchText) => {
+    searchText = StringUtils.trimToEmpty(searchText);
+    this.props.onSearchTxtChange(searchText);
+    this.props.formulateFeatureData();
+  };
+
+  resetFilters = () => {
+    this.props.resetFilters();
+    this.props.setProductOptions();
+  };
+
+
+  /**
+   *  Add/Remove Feature(s).
+   */
+  updateFeatures = (updateObj) => {
+    if (!updateObj)
+      return;
+    if(this.state.showLegalMessageModal) {
+      this.hideLegalMessageModal();
+    }
+    const e = updateObj.event;
+    const featureToUpdate = updateObj.featureToUpdate;
+    const hasAdditionalCoverage = updateObj.hasAdditionalCoverage;
+
+
+    // Dont manipulate actionIndicator for Additional Coverage calls as its already set in the FeatureDetail popup.
+    if (!hasAdditionalCoverage)
+    {
+      if (featureToUpdate.isExisting || featureToUpdate.actionIndicator === ActionIndicator.EXISTING)
+      {
+        featureToUpdate.actionIndicator = (featureToUpdate.actionIndicator === ActionIndicator.EXISTING) ? ActionIndicator.DROP : ActionIndicator.REMOVE_FROM_CART;
+      } else
+      {
+        featureToUpdate.actionIndicator = (featureToUpdate.actionIndicator === ActionIndicator.ADD) ? ActionIndicator.REMOVE_FROM_CART : ActionIndicator.ADD;
+      }
+    }
+
+    const { allFeatures, selLevel, selMTN } = this.props;
+    const { landing = {}} = this.props;
+    const { customerInfo = {} } = landing;
+    const { lookupMtn = "" } = customerInfo;
+
+    // Validations before api call.
+    if (featureToUpdate.isRequired
+      && (featureToUpdate.actionIndicator === ActionIndicator.DROP || featureToUpdate.actionIndicator === ActionIndicator.REMOVE_FROM_CART))
+    {
+      const mandatoryFeatureForProductExists = allFeatures.some(f => {
+        return (f.productId === featureToUpdate.productId
+          && f.sorId !== featureToUpdate.sorId
+          && (f.actionIndicator === ActionIndicator.EXISTING || f.actionIndicator === ActionIndicator.ADD)) ? true : false;
+      });
+      if (!mandatoryFeatureForProductExists) {
+        e.stopPropagation();
+        this.props.addAppMessage(`Atleast one feature in category ${featureToUpdate.productName} is mandatory`, "error");
+        return;
+      }
+    }
+
+    let mutexFeatures = [];
+    let newMutexFeatures = [];
+    if (featureToUpdate && featureToUpdate.actionIndicator === ActionIndicator.ADD && featureToUpdate.selectable === true)
+    {
+      mutexFeatures = FeaturesService.findMutexFeatures(featureToUpdate, allFeatures);
+      if (mutexFeatures && mutexFeatures.length > 0) {
+        mutexFeatures.forEach(mutexFeature => {
+          if(mutexFeature?.selectable === true){
+            if (mutexFeature.actionIndicator === ActionIndicator.EXISTING) {
+              mutexFeature.actionIndicator = ActionIndicator.DROP;
+            } else if (mutexFeature.actionIndicator === ActionIndicator.ADD) {
+              mutexFeature.actionIndicator = ActionIndicator.REMOVE_FROM_CART;
+            }
+            newMutexFeatures.push(mutexFeature);
+          }
+        });
+      }
+    }
+
+    const modifiedMtns = (selLevel === LevelType.LINE_LEVEL) ? [selMTN] : [];
+    const modifiedAccountEligibleMtns = (this.props?.doorTodoorExitingCustomer === 'true')?[selMTN]:lookupMtn ? [lookupMtn] : [this.props.activeMTN];
+
+    let updatefeaturesReq = {};
+    featureToUpdate.midnightWHW = this.props.landing?.assistedFlags?.midnightWHW;
+    if (selLevel === LevelType.LINE_LEVEL)
+    {
+      if (modifiedMtns && modifiedMtns.length > 0) {
+        modifiedMtns.forEach(modifiedMtn => {
+          FeaturesService.fillFeatureRequest(updatefeaturesReq, featureToUpdate, modifiedMtn);
+          newMutexFeatures.forEach(mutexFeature => {
+            FeaturesService.fillFeatureRequest(updatefeaturesReq, mutexFeature, modifiedMtn);
+          });
+        });
+        let hasAccountLevel = this.props.featuresCache?.shared?.products?.map((product) => {
+          return (
+            product.skus.filter((item) => item.actionIndicator == 'Z' && item.insuranceSpo == true)
+          )
+        })
+        let AccountLevelSpo = hasAccountLevel?.flat();
+        if (this.props.featuresCache?.shared?.products?.length > 0 && featureToUpdate?.type == "SFO" && featureToUpdate?.actionIndicator == 'A' && featureToUpdate?.productName == "Device Protection" && AccountLevelSpo?.length > 0) {        
+          let DropFeature = AccountLevelSpo?.length > 0 && AccountLevelSpo?.map((item) => {
+            let eligibleMts =item?.eligibileMTNs?.map((eligibleMtn)=>{return {mtn:eligibleMtn}})
+            let clonedFeature = {
+              id: item.sorId,
+              actionIndicator: 'D',
+              type: item.type,
+              mtns: eligibleMts.length > 0 ? eligibleMts : [],
+              quantity:
+                item.quantity && item.quantity > 1 ? item.quantity : 1,
+              reqMetadata: {
+                productId: item.productId,
+                isAdditionalCoverage: item.isAdditionalCoverage
+                  ? true
+                  : false,
+                isStackableData: item.isStackableData ? true : false
+              }
+            };
+            return clonedFeature;
+          })
+          console.log("DropFeature", DropFeature)
+          updatefeaturesReq = {...updatefeaturesReq,account:{features:{add:[DropFeature[0]]}}}
+        }   
+      }
+    } else if (selLevel === LevelType.ACCOUNT_LEVEL)
+    {
+      FeaturesService.fillFeatureRequest(updatefeaturesReq, featureToUpdate, "", {}, modifiedAccountEligibleMtns);
+      newMutexFeatures.forEach(mutexFeature => {
+        FeaturesService.fillFeatureRequest(updatefeaturesReq, mutexFeature, "", {}, modifiedAccountEligibleMtns);
+      });
+    }
+
+    const reqWrapper = {
+      request: updatefeaturesReq,
+      source: UpdateFeatureSource.FEATURES_GRIDWALL,
+      addDirectlyToCart: featureToUpdate.isSubscription? true: false,
+    };
+
+      if(updateObj?.featureToUpdate?.sorId== "2626" || updateObj?.featureToUpdate?.sorId== "2625" || updateObj?.featureToUpdate?.sorId== "2627" || updateObj?.featureToUpdate?.sorId== "2628"&& updateObj?.featureToUpdate?.actionIndicator =="A"){
+        const channel = sessionStorage.getItem("channel");
+      if((this.state.ispuItem && !channel.includes("OMNI-INDIRECT")) || (this.state.depletionType === "F"  || this.state.depletionType === "O")) {
+        const accessorie = {
+          "add": [
+          {
+          "isSoftSku": false,
+          "accountLevelAccessory": false,
+          "cashOptionEnabled": false,
+          "qty":  updateObj?.accessories,
+          "accessoryBundle": false,
+          "id": updateObj?.extenderSorId,
+          "scannedItem": false,
+          }
+          ]
+          }
+            reqWrapper.request.lines[0] =  {
+              ... reqWrapper.request?.lines?.length >0 && reqWrapper.request.lines[0],
+              accessories : accessorie
+            }
+      }
+    }
+    // VZWDHM-1386 -- start
+    const extenderFromCart = this.state.cartItem.length > 0 && this.state.cartItem.filter((eachCartItem) => eachCartItem?.cartItemType === 'ACCESSORY' && eachCartItem?.sorId === updateObj?.extenderSorId);
+    const extenderQuantityFromCart = extenderFromCart.length > 0 && extenderFromCart[0].qty ? extenderFromCart[0].qty : this.props.existingWhwExtenderQuant?.extenderQuant;
+    //WHW Remove scenario
+    const depletionType =this.props?.landing?.cartDetails && 
+    this.props?.landing?.cartDetails?.lineDetails &&
+    this.props?.landing?.cartDetails?.lineDetails?.lineInfo?.length>0 && 
+    this.props?.landing?.cartDetails?.lineDetails?.lineInfo[0]?.itemsInfo?.length>0 &&
+    this.props?.landing?.cartDetails?.lineDetails?.lineInfo[0]?.itemsInfo[0]?.depletionType ? 
+    this.props?.landing?.cartDetails?.lineDetails?.lineInfo[0]?.itemsInfo[0]?.depletionType :'';
+    const channel = sessionStorage.getItem("channel");
+    if ((updateObj.featureToUpdate.sorId == "2626" || updateObj.featureToUpdate.sorId == "2625" || updateObj.featureToUpdate.sorId == "2627" ||
+      updateObj.featureToUpdate.sorId == "2628") && (updateObj.featureToUpdate.actionIndicator == "R" || updateObj.featureToUpdate.actionIndicator == "D")) { // if action indicator is R or D --> remove accessories
+      const accessorieRemove = {
+        "remove": [
+          {
+            "isSoftSku": false,
+            "accountLevelAccessory": false,
+            "cashOptionEnabled": false,
+            "qty": extenderQuantityFromCart,
+            "accessoryBundle": false,
+            "id": updateObj.extenderSorId,
+            "scannedItem": false,
+          }
+        ]
+      }
+      reqWrapper.request.lines[0] = {
+        ...reqWrapper.request.lines[0],
+        accessories: accessorieRemove
+      }
+
+    }
+
+    //swapping from WHW plus to basic (or) basic to Plus
+    const removedWHWSpo=reqWrapper.request && reqWrapper.request.lines?.length>0 && reqWrapper.request.lines[0]?.features && reqWrapper.request.lines[0]?.features?.remove?.length>0 && reqWrapper.request.lines[0]?.features?.remove[0]?.id ? reqWrapper.request.lines[0]?.features?.remove[0]?.id :"";
+    if (((removedWHWSpo == "2625" && updateObj.featureToUpdate.sorId == "2626") || (removedWHWSpo == "2626" && updateObj.featureToUpdate.sorId == "2625"))
+      && updateObj.featureToUpdate.actionIndicator == "A") 
+    {
+      if (depletionType === "L" && channel.includes("OMNI-RETAIL") && !this.state.ispuItem )
+      // if depletion is local --> Accessories - remove
+      {
+        const extenderSorId = this.props && this.props.existingWhwExtenderQuant && this.props.existingWhwExtenderQuant.extenderSorId
+        const accessorieRemove = {
+          "remove": [
+            {
+              "isSoftSku": false,
+              "accountLevelAccessory": false,
+              "cashOptionEnabled": false,
+              "qty": extenderQuantityFromCart,
+              "accessoryBundle": false,
+              "id": extenderSorId,
+              "scannedItem": false,
+            }
+          ]
+        }
+        reqWrapper.request.lines[0] = {
+          ...reqWrapper.request.lines[0],
+          accessories: accessorieRemove
+        }
+      }
+      else if ((this.state.ispuItem && !channel.includes("OMNI-INDIRECT")) || (this.state.depletionType === "F"  || this.state.depletionType === "O")) {
+        // if depletion is DFILL or ISPU(for Retail) -->Accessories - add [dfill] with only quantity change
+        const accessorie = {
+          "add": [
+            {
+              "isSoftSku": false,
+              "accountLevelAccessory": false,
+              "cashOptionEnabled": false,
+              "qty": updateObj?.accessories,
+              "accessoryBundle": false,
+              "id": updateObj?.extenderSorId,
+              "scannedItem": false,
+            }
+          ],
+            "remove": [
+              {
+                "isSoftSku": false,
+                "accountLevelAccessory": false,
+                "cashOptionEnabled": false,
+                "qty": extenderQuantityFromCart,
+                "accessoryBundle": false,
+                "id":  updateObj?.extenderSorId,
+                "scannedItem": false,
+              }
+          ]
+        }
+        reqWrapper.request.lines[0] = {
+          ...reqWrapper.request.lines[0],
+          accessories: accessorie
+        }
+      }
+    }
+ //VZWDHM-1386 -- end
+
+    this.props.updateFeatures(reqWrapper);
+  };
+
+  whwPlusExtenderQuant = (whwPlusExtenderQuant) => {
+    this.props?.initWhwPlusExtenderQuant(whwPlusExtenderQuant);
+  }
+  addFeaturesToCart = () => {
+    this.props.updateFeatures({
+      source: UpdateFeatureSource.FEATURES_GRIDWALL,
+      initConflictsCall: true,
+      addDirectlyToCart: true,
+    });
+  };
+
+  addFeaturesToCartWithoutConflict = () => {
+    this.props.updateFeatures({
+      source: UpdateFeatureSource.FEATURES_GRIDWALL,
+      initConflictsCall: false, 
+      addDirectlyToCart: true,
+      isConflictsModalRemoved: true,
+      history: this.props.history
+    });
+  };
+
+  onAddFeatureBtnClicked = (feature) => {
+    if (feature.isSubscription) {
+      this.setState({ isFeatureAddedToCart: true })
+    } else {
+      this.setState({ isFeatureAddedToRedis: true })
+    }
+  };
+
+  /**
+   *  View Feature Details popup.
+   */
+  viewFeatureDetail = (showDetailsPopup, selFeature) => {
+    this.setState({
+      showDetailsPopup: showDetailsPopup ? showDetailsPopup : false,
+      selFeature: selFeature
+    });
+  };
+
+  /**
+   *  Device Eligibility.
+   */
+  showDeviceEligibility = (event, sorId) => {
+    let features = this.props.filteredFeatures && this.props.filteredFeatures.length > 0 && this.props.filteredFeatures || [];
+    let vzProtectEligibleFeature = features && features.length ? features.filter(feature =>  feature.sorId === sorId) : [];
+    this.setState({
+      showDeviceEligibilityPopup: true,
+      vzProtectEligibleFeature
+    });
+    this.invokeTaggingForModal(
+      true,
+      taggingConstants.PAGE_DETAIL.MODAL.DEVICE_ELIGIBILITY_MODAL
+    );
+
+  };
+
+  hideDeviceEligibility = () => {
+    this.setState({
+      showDeviceEligibilityPopup: false,
+      vzProtectEligibleFeature:[]
+    });
+    this.invokeTaggingForModal(
+      false,
+      taggingConstants.PAGE_DETAIL.MODAL.DEVICE_ELIGIBILITY_MODAL
+    );
+  };
+
+
+  invokeTaggingForModal = (showModal,page) => {
+    window.store.dispatch(
+      taggingActions.invokeTagging({
+        showModal,
+        pagename: taggingConstants.MODAL_VIEW,
+        pageDetail: page
+      })
+    );
+  };
+
+
+  resetFeatureRedisFlags = () => {
+    this.setState({
+      isFeatureAddedToCart: false,
+      isFeatureAddedToRedis: false
+    })
+  };
+
+  onBackBtnClick = () => {
+  };
+
+  addFeaturesGridwallGuard() {
+  }
+
+  componentWillUnmount() {
+    this.props.clearAppMessages();
+  }
+
 }
-const FeaturesGridwallEditConfig = {
-    emptyLabel: "Features Grid Wall",
-    isEmpty: function(props) {
-        return true;
-    }
+
+
+const mapStateToProps = createStructuredSelector({
+  landing: makeSelectLanding(),
+  cartItem: selectItemsInfo(),
+  featuresState: FeaturesSelector.getFeaturesState(),
+  featuresCache: FeaturesSelector.getFeaturesCache(),
+  isIspuInventryAvaialble: FeaturesSelector.getISPUInventoryAvaialble(),
+  isDfillInventoryAvaialble: FeaturesSelector.getDfillInventoryAvaialble(),
+  selLevel: FeaturesSelector.getSelectedLevel(),
+  selMTN: FeaturesSelector.getSelectedMtn(),
+  selSortByType: FeaturesSelector.getSelectedSortByType(),
+  selProductId: FeaturesSelector.getSelectedProductId(),
+  mtnOptions: FeaturesSelector.getMtnOptions(),
+  productOptions: FeaturesSelector.getProductOptions(),
+  allFeatures: FeaturesSelector.getAllFeatures(),
+  filteredFeatures: FeaturesSelector.getFilteredFeatures(),
+  recommendations: FeaturesSelector.getRecommendations(),
+  conflictsData: getConflictsData(),
+  conflictsCallSuccess: conflictsCallSuccess(),
+  conflictsCallFailed: conflictsCallFailed(),
+  activeMTN: getActiveMtn(),
+  isCustomerFromTMPRestrictedState: getIsCustomerFromTMPRestrictedState,
+  doorTodoorExitingCustomer:getDoortoDoorExitingCustomer(),
+  selectedISPUStoreDetails: getSelectedStoreWHWDetails(),
+  existingWhwExtenderQuant: getWhwPlusExtenderQuant(),
+  appleMutualIds : appleMutualIds(),
+  mutualIdLabelText:mutualIdLabelText(),
+  fiveGProfInstallCharges:getFiveGProfInstallCharges()
+});
+
+export const mapDispatchToProps = dispatch => {
+  return {
+    getMutualIds : (data) => dispatch(actions.getMutualIds(data)),
+    initSearchCriteria: () => dispatch(actions.initSearchCriteria()),
+    fetchFeatures: () => dispatch(actions.fetchFeatures()),
+    formulateFeatureData: () => dispatch(actions.formulateFeatureData()),
+    setProductOptions: () => dispatch(actions.setProductOptions()),
+    onLevelChange: (selLevel) => dispatch(actions.onLevelChange(selLevel)),
+    onMTNChange: (selMTN) => dispatch(actions.onMTNChange(selMTN)),
+    onSortByTypeChange: (selSortByType) => dispatch(actions.onSortByTypeChange(selSortByType)),
+    onProductChange: (selProductId) => dispatch(actions.onProductChange(selProductId)),
+    onSearchTxtChange: (searchText) => dispatch(actions.onSearchTxtChange(searchText)),
+    resetFilters: () => dispatch(actions.onResetFilters()),
+    initWhwPlusExtenderQuant: (data) => dispatch(actions.initWhwPlusExtenderQuant(data)),
+    updateFeatures: (reqWrapper) => dispatch(actions.updateFeatures(reqWrapper)),
+    updateActiveLevel: (level) => dispatch(landingActions.updateActiveLevel(level)),
+    updateActiveMtn: (mtn) => dispatch(landingActions.updateActiveMtn(mtn)),
+    initConflictsCall: () => dispatch(landingActions.initConflictsCall()),
+    addAppMessage: (message, type, Icon, timeout) => dispatch(appMessageActions.addAppMessage(message, type, Icon, timeout)),
+    showAppLoader: () => dispatch(appLoaderActions.show()),
+    hideAppLoader: () => dispatch(appLoaderActions.hide()),
+    clearAppMessages: () => dispatch(appMessageActions.clearAppMessages()),
+    WHWInventoryCheck: (showBanner) => dispatch(actions.WHWInventoryCheck(showBanner)),
+    getMutualLabelText : (data) => dispatch(actions.getMutualLabelText(data)),
+  };
 };
 
-export default FeaturesGridwall;
+const withConnect = connect(
+  mapStateToProps,
+  mapDispatchToProps
+);
+
+const key = INJECTOR_KEYS.FEATURES_PAGE;
+const withReducer = injectReducer({ key, reducer });
+const withFeaturesSaga = injectSaga({ key, saga: featuresSaga });
+
+export default withRouterV6(compose(
+  withReducer,
+  withConnect,
+  withFeaturesSaga
+)(FeaturesGridwallComponent));
