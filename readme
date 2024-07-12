@@ -1,1 +1,321 @@
-https://verizon.webex.com/meet/bhagya.ratna.valli.pollisetty
+import React, { useMemo, useEffect, useState } from 'react';
+import { useSelector, useDispatch } from 'react-redux';
+import { TextLink } from '@vds/buttons';
+import { Body } from '@vds/typography';
+import { RadioButtonGroup } from '@vds/radio-buttons';
+import * as actionTypes from './@Redux/actionTypes';
+import { isMobile, getSession, getPageName, isJointTransactionFlow, isLoggedIn } from '../../components/common/Helpers';
+import { handleDisclosurePerks, handleDuplicatePerks } from './common/helpers';
+import { eventDispatcher } from '../../components/common/Tagging/index';
+
+export const PerkTileProps = (props) => {
+  const storeDetails = useSelector((store) => store);
+  const selectedPlanInfo = storeDetails?.progressivePlans?.selectedPlanInfo || {};
+  const selectedPerks = storeDetails?.progressivePlans?.selectedPlanInfo?.selectedPerks || [];
+  const [showPerks, setShowPerks] = useState(false);
+  const [accordianEventFired, setAccordianEventFired] = useState(false);
+  const readDLSuccess = useSelector((reduxStore) => reduxStore.SessionValues?.tagging?.[getPageName()]?.success);
+
+  let planSelected = false;
+  let perksSelecetd = false;
+  if (selectedPerks?.length > 0) {
+    perksSelecetd = true;
+  }
+  if (selectedPlanInfo?.selectedPlan?.planId && selectedPlanInfo?.selectedPlan?.from !== 'popularPlanPage') {
+    planSelected = true;
+  }
+
+  const perkTiles = TilePropsList();
+  const isPerksEdit = getSession('isPerksEdit');
+  useEffect(() => {
+    const opened = isPerksEdit === 'Y' ? true : planSelected;
+    if (readDLSuccess && opened && !accordianEventFired) {
+      setShowPerks(true);
+      const obj = { name: 'perks accordion ' };
+      eventDispatcher('openView', obj);
+      setAccordianEventFired(true);
+    }
+  }, [readDLSuccess, isPerksEdit, planSelected]);
+
+  const perkTile = {
+    'data-track': showPerks ? 'Perk accordion collapse' : 'Perk accordion expand',
+    header: {
+      title: {
+        children: props?.perks?.perksAccordionText ? props.perks.perksAccordionText : 'Perks',
+        id: 'perksSection',
+      },
+      subtitle: {
+        children:
+          selectedPerks?.length > 0
+            ? `${selectedPerks.length} added`
+            : props?.perks?.accordionSubText
+              ? props.perks.accordionSubText
+              : 'choose your perks',
+      },
+      numberBadge: {
+        number: 2,
+      },
+      completed: perksSelecetd,
+      onClick: () => {
+        setShowPerks(!showPerks);
+      },
+    },
+    subtitle: {
+      children: props?.perks?.subHeading ? props.perks.subHeading : 'Save on every one. Just $10/mo each.',
+    },
+    tiles: perkTiles,
+    opened: isPerksEdit ? true : planSelected,
+  };
+
+  return perkTile;
+};
+
+export const TilePropsList = () => {
+  const state = useSelector((store) => store);
+  const [viewedDuplicatePerks] = useState(new Set());
+  const planData = state?.progressivePlans?.progressivePlanAPiResponse ? state?.progressivePlans?.progressivePlanAPiResponse : {};
+  const availablePerks =
+    planData?.data?.lineLevelPlans?.lines?.length && planData?.data?.lineLevelPlans?.lines[0]?.availablePerks
+      ? planData?.data?.lineLevelPlans?.lines[0]?.availablePerks
+      : [];
+  const perkReferenceDataList = planData?.data?.perkReferenceDataList ? planData?.data?.perkReferenceDataList : [];
+  const perkPdpOverlay = state?.progressivePlans?.perkPdpOverlay ? state?.progressivePlans?.perkPdpOverlay : {};
+  const perkDisplay = perkPdpOverlay?.show;
+  const displayPerkList = availablePerks?.filter((perk) => (!perk.skipForDisplay ? perk : null));
+  const selectedPlan = state?.progressivePlans?.selectedPlanInfo?.selectedPlan ? state?.progressivePlans?.selectedPlanInfo?.selectedPlan : {};
+  const selectedPerks = state?.progressivePlans?.selectedPlanInfo?.selectedPerks ? state?.progressivePlans?.selectedPlanInfo?.selectedPerks : [];
+  selectedPerks.map((perk) => viewedDuplicatePerks.add(perk.spoId));
+  const { perkStaticContent } = state?.plansReferenceData?.output || {};
+  const dispatch = useDispatch();
+  const toggleclick = (e, perkInfo, toggleOn) => {
+    console.log('kkk perkinfo', selectedPerks, perkInfo);
+    let obj = { name: `${perkInfo?.perkTitle} - true` };
+    if (!toggleOn) {
+      obj = { name: `${perkInfo?.perkTitle} - false` };
+    }
+    eventDispatcher('linkClick', obj);
+    const checkMutualExists = perkInfo?.mutualExclusions?.find((item) => selectedPerks?.some((item1) => item1.spoId === item));
+    dispatch({ type: actionTypes.UPDATE_SELECT_DATA_PERK, payload: { perkInfo, toggleOn } });
+    if (checkMutualExists) {
+      const switchId = `${checkMutualExists}_TO_${perkInfo.spoId}`;
+      // console.log('modaloverlay', switchId);
+      dispatch({ type: actionTypes.PERKS_CONFLICT_OVERLAY, response: { show: true, switchId } });
+      return;
+    }
+
+    const showDisclosurePerk = handleDuplicatePerks(state, toggleOn, perkInfo, viewedDuplicatePerks, dispatch, true);
+
+    if (showDisclosurePerk) {
+      handleDisclosurePerks(perkStaticContent, perkInfo, state, toggleOn, dispatch);
+    }
+    if (selectedPlan?.planId === (null || undefined)) {
+      dispatch({ type: actionTypes.UPDATE_ERROR_NOTIFICATION, payload: true });
+    } else {
+      dispatch({ type: actionTypes.UPDATE_ERROR_NOTIFICATION, payload: false });
+    }
+  };
+  const perkItemProps = ({ perkDetails, toggleOn, groupPerkList, perkArrayIndex }) => {
+    const tile = {
+      id: perkDetails?.spoId,
+      ariaLabel: perkDetails?.perkTitle,
+      backgroundImage: {
+        baseUrl: 'https://ss7.vzw.com/is/image/VerizonWireless/',
+        perkName: perkDetails?.perkBackgroundImage,
+      },
+      elementSurface: perkDetails?.perkTextAppearance?.toLowerCase() === 'light' ? 'dark' : 'light',
+      variant: 'toggle',
+      toggle: {
+        on: toggleOn,
+        id: `${perkDetails?.spoId}${toggleOn ? '_on' : '_off'}`,
+        ariaLabel: perkDetails?.perkTitle,
+        onChange: (e, element) => toggleclick(e, perkDetails, element?.on),
+      },
+      title: {
+        size: 'medium',
+        type: 'title',
+        children: perkDetails?.perkTitle,
+        underline: true,
+        width: isMobile() ? '140px' : '165px',
+      },
+      oldPrice: {
+        leadingText: {
+          children: perkStaticContent?.perkTileLeadingText,
+        },
+        trailingText: {
+          children:
+            groupPerkList &&
+            groupPerkList.length > 0 &&
+            groupPerkList.map((perk) => (perk?.categoryCodes?.includes?.('BYOVZHOME') ? `${'on '}${perk?.perkTitle}` : '')),
+        },
+        price: perkDetails?.price?.totalAmountOff
+          ? perkDetails.price.totalAmountOff
+          : groupPerkList?.groupPerkList?.[0]?.price?.totalAmountOff
+            ? groupPerkList[0].price.totalAmountOff
+            : 0,
+        term: 'month',
+      },
+      newPrice: {
+        price:
+          groupPerkList &&
+          groupPerkList?.length > 0 &&
+          groupPerkList.some((perk) => perk?.categoryCodes?.includes?.('BYOVZHDP') || perk?.categoryCodes?.includes?.('BYOCLDUNLG'))
+            ? `${groupPerkList[0]?.price?.discountedPrice}${groupPerkList[1]?.price?.discountedPrice ? `- $${groupPerkList[1]?.price?.discountedPrice}` : ''}`
+            : perkDetails?.price?.discountedPrice,
+        term: 'month',
+      },
+      image: {
+        src: perkDetails?.perkLogo,
+        alt: perkDetails?.perkTitle,
+      },
+      drawer:
+        groupPerkList && groupPerkList.length > 0
+          ? {
+              open: toggleOn,
+              surface: 'light',
+              children: (
+                <>
+                  <>
+                    <RadioButtonGroup
+                      id="drawer"
+                      value={perkDetails?.spoId}
+                      onChange={(e) => {
+                        let perkInfo = groupPerkList?.find((spo) => spo?.spoId === e?.target?.value);
+                        dispatch({
+                          type: actionTypes.UPDATE_SELECT_DATA_PERK,
+                          payload: { perkInfo, toggleOn: e?.target?.checked },
+                        });
+                        dispatch({
+                          type: actionTypes.UPDATE_SELECT_DATA_PERK,
+                          payload: { perkInfo: groupPerkList?.find((spo) => spo?.spoId !== e?.target?.value), toggleOn: false },
+                        });
+                        handleDuplicatePerks(state, toggleOn, perkInfo, viewedDuplicatePerks, dispatch, false);
+                      }}
+                      data={
+                        groupPerkList &&
+                        groupPerkList.length > 0 &&
+                        groupPerkList.map((perk) => ({
+                          id: `${perk?.perkTitle}${perk?.spoId}`,
+                          name: `${perk?.perkTitle}${'Features'}`,
+                          value: perk?.spoId,
+                          label: (
+                            <>
+                              <Body bold>
+                                ${perk?.price?.discountedPrice || 0}/mo{' '}
+                                {perk?.groupBy?.[0]?.description?.split('|')?.[
+                                  perk?.groupBy?.[0]?.spoSorIds?.findIndex((spoId) => spoId === perk?.spoId)
+                                ] || ''}
+                              </Body>
+                            </>
+                          ),
+                          children: (
+                            <>
+                              {perk?.price?.totalAmountOff !== 0 && <Body color="green">Save ${perk?.price?.totalAmountOff}/mo</Body>}
+                              {(perk?.categoryCodes?.includes?.('APONEFMLY') || perk?.categoryCodes?.includes?.('BYOCLDUNLG')) && (
+                                // eslint-disable-next-line react/jsx-curly-brace-presence
+                                <Body color={'#747676'} size="small">
+                                  {perkStaticContent?.groupPerksShareText}
+                                </Body>
+                              )}
+                            </>
+                          ),
+                        }))
+                      }
+                    />
+                  </>
+                  <>
+                    {groupPerkList &&
+                      groupPerkList.length > 0 &&
+                      groupPerkList.map((perk) => {
+                        if (perk?.categoryCodes?.includes?.('BYOVZHDP') && !perkDisplay) {
+                          return (
+                            <TextLink
+                              type="standAlone"
+                              size="small"
+                              onClick={
+                                () =>
+                                  dispatch({
+                                    type: actionTypes.SET_PERK_PDP_OVERLAY,
+                                    response: { selectedSpoId: perkDetails?.spoId, show: true, selectedIndex: perkArrayIndex },
+                                  })
+                                // eslint-disable-next-line react/jsx-curly-brace-presence
+                              }
+                            >
+                              Compare details
+                            </TextLink>
+                          );
+                        }
+                        return null;
+                      })}
+                  </>
+                </>
+              ),
+            }
+          : undefined,
+      ...(!perkDisplay
+        ? {
+            onClick: (e) => {
+              if (e) {
+                eventDispatcher('openView', { name: `${perkDetails?.perkTitle} modal` });
+                dispatch({
+                  type: actionTypes.SET_PERK_PDP_OVERLAY,
+                  response: { selectedSpoId: perkDetails?.spoId, show: true, selectedIndex: perkArrayIndex },
+                });
+              }
+            },
+          }
+        : {}),
+    };
+    return tile;
+  };
+  const tileProps = useMemo(() => {
+    if (displayPerkList && displayPerkList.length > 0) {
+      const displayTiles = displayPerkList.map((perkInfo, perkArrayIndex) => {
+        if (perkInfo?.spoId) {
+          const perkDetails = { ...perkInfo, ...(perkReferenceDataList[perkInfo?.spoId] || {}) };
+          let toggleOn = false;
+          if (selectedPerks?.length > 0) {
+            toggleOn = selectedPerks.find((perk) => perk?.spoId === perkInfo?.spoId);
+          }
+          return perkItemProps({
+            perkDetails,
+            toggleOn,
+            groupPerkList: [],
+            perkArrayIndex,
+          });
+        }
+        const perkGroup = perkInfo?.groupList?.map((groupPerk) => ({
+          ...groupPerk,
+          ...(perkReferenceDataList[groupPerk?.spoId] || {}),
+        }));
+        const defaultPerk =
+          perkInfo?.groupList?.find(
+            (spo) => Array.isArray(selectedPerks) && selectedPerks.filter((detail) => Number(detail?.spoId) === Number(spo?.spoId)).length > 0,
+          ) ||
+          perkInfo?.groupList?.[0] ||
+          {};
+        const groupPerkList =
+          perkGroup &&
+          perkGroup.length > 0 &&
+          perkGroup.map((groupItem) => ({
+            ...groupItem,
+            ...perkReferenceDataList[groupItem?.spoId],
+          }));
+        const perkDetails = { ...defaultPerk, ...(perkReferenceDataList[defaultPerk?.spoId] || {}), perkTitle: perkInfo?.groupDisplayName };
+        let toggleOn = false;
+        if (selectedPerks?.length > 0) {
+          toggleOn = selectedPerks?.find((perk) => perk?.spoId === defaultPerk?.spoId);
+        }
+        return perkItemProps({
+          perkDetails,
+          toggleOn,
+          groupPerkList,
+          perkArrayIndex,
+        });
+      });
+      return displayTiles;
+    }
+    return [];
+  }, [perkReferenceDataList, displayPerkList, selectedPerks]);
+
+  return tileProps;
+};
