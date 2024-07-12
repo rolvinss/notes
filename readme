@@ -1,17 +1,1 @@
-let rr = {
-    "message": "New YouTube TV Subscribers save $120 first year.",
-    "startDate": "7/24/2024",
-    "endDate": "12/31/2024"
-};
-
-let showBanner = false;
-
-let currentDate = new Date();
-let startDate = new Date(rr.startDate);
-let endDate = new Date(rr.endDate);
-
-if (currentDate >= startDate && currentDate <= endDate) {
-    showBanner = true;
-}
-
-console.log(showBanner);
+https://verizon.webex.com/meet/bhagya.ratna.valli.pollisetty
