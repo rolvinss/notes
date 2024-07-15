@@ -1,4 +1,7 @@
 import React, { Component, Fragment } from "react";
+import { Modal, ModalBody, ModalTitle } from "@vds/modals";
+import { Button } from "@vds/buttons";
+import DOMPurify from 'dompurify';
 import * as domService from "../../../services/dom.service";
 import cx from "classnames";
 import "./FeatureTile.css";
@@ -33,10 +36,13 @@ class FeatureTile extends Component
     this.state = {
       isFeatureSelected: (actionToPerform === FeatureAction.ADDED_TO_CART ? true : false),
       actionToPerformState: actionToPerform,
-      isOpenModal:false
+      isOpenModal:false,
+      showBannerModal:false      
     };
   }
-  
+  handleshowModal = (value) =>{
+    this.setState({showBannerModal:value})
+  }
   componentDidUpdate(prevProps)
   {
     let actionToPerform = "";
@@ -134,7 +140,7 @@ class FeatureTile extends Component
               </div>
               
               {/* Feature image. */}
-              {showBanner && inCurrentTimeStamp && <div className="banner-text">{bannerYTTVContentData?.message ? bannerYTTVContentData?.message : consts.YT_BANNER_TITLE}<span onClick={()=>this.props.handleshowModal(true)} style={{textDecoration: "underline", cursor: "pointer" }}>Details</span></div>}
+              {showBanner && inCurrentTimeStamp && <div className="banner-text">{bannerYTTVContentData?.message ? bannerYTTVContentData?.message : consts.YT_BANNER_TITLE}<span onClick={()=>this.handleshowModal(true)} style={{textDecoration: "underline", cursor: "pointer" }}>Details</span></div>}
               <img data-testid="FeatureTileImg" data-track={`viewdetails_${feature.skuName}`} className="feature-icon crsr" src={featureImg} alt={feature && feature.skuName ? feature.skuName : "Feature image"} onClick={(event) => this.viewFeatureDetail(event)} tabIndex="0" role="button" onKeyPress={(e)=>onKeyPressEvent(e)&&this.viewFeatureDetail(e)}/>
 
               {/* Feature name. */}
@@ -215,6 +221,18 @@ class FeatureTile extends Component
 
             </div>
           </div>
+          {<Modal
+                  className="switching-modal"
+                  ariaLabel="Clear Existing Lines"
+                  opened={this.state.showBannerModal}
+                  showModalChanged={(e) => {this.handleshowModal(e)}}
+                >
+                <ModalTitle primitive="h2">{bannerYTTVContentData?.bannerTitle}</ModalTitle>
+                  <ModalBody><div dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(bannerYTTVContentData?.bannerBody) }} /></ModalBody>
+                <Button className="u-text14 u-marginRightLarge yt-modal-button" data-testid="youtube-promo-gotit" onClick={()=>{this.handleshowModal(false)}}>
+              Got it
+              </Button>
+                </Modal>}
         </Fragment>)
       );
     }
