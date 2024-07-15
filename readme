@@ -1,21 +1,52 @@
-import React, {Component, Fragment} from 'react';
+import React from 'react';
+import { render } from '@testing-library/react';
+import '@testing-library/jest-dom/extend-expect';
+import FeaturesGridwall from './FeaturesGridwall';
 import FeaturesGridwallComponent from "../../../components/FeaturesGridwall/FeaturesGridwall/FeaturesGridwallComponent";
 
-class FeaturesGridwall extends Component {   
-    render() {
-        const { legacyCloudFeatures = [], bannerYTTVContentData = {} } = this.props || {};
+// Mocking the FeaturesGridwallComponent
+jest.mock('../../../components/FeaturesGridwall/FeaturesGridwall/FeaturesGridwallComponent', () => {
+    return function MockFeaturesGridwallComponent(props) {
         return (
-            <Fragment>
-                <FeaturesGridwallComponent legacyCloudFeatures={legacyCloudFeatures} bannerYTTVContentData={bannerYTTVContentData}/>
-            </Fragment>
+            <div data-testid="mock-features-gridwall-component">
+                {JSON.stringify(props)}
+            </div>
         );
-    }
-}
-const FeaturesGridwallEditConfig = {
-    emptyLabel: "Features Grid Wall",
-    isEmpty: function(props) {
-        return true;
-    }
-};
+    };
+});
 
-export default FeaturesGridwall;
+describe('FeaturesGridwall', () => {
+    test('renders without crashing', () => {
+        const { container } = render(<FeaturesGridwall />);
+        expect(container).toBeInTheDocument();
+    });
+
+    test('renders FeaturesGridwallComponent with correct props', () => {
+        const legacyCloudFeatures = [{ feature: 'Feature1' }, { feature: 'Feature2' }];
+        const bannerYTTVContentData = { title: 'Banner Title' };
+
+        const { getByTestId } = render(
+            <FeaturesGridwall 
+                legacyCloudFeatures={legacyCloudFeatures} 
+                bannerYTTVContentData={bannerYTTVContentData} 
+            />
+        );
+
+        const componentProps = JSON.parse(getByTestId('mock-features-gridwall-component').textContent);
+        expect(componentProps.legacyCloudFeatures).toEqual(legacyCloudFeatures);
+        expect(componentProps.bannerYTTVContentData).toEqual(bannerYTTVContentData);
+    });
+
+    test('renders correctly with empty legacyCloudFeatures and bannerYTTVContentData', () => {
+        const { getByTestId } = render(<FeaturesGridwall />);
+
+        const componentProps = JSON.parse(getByTestId('mock-features-gridwall-component').textContent);
+        expect(componentProps.legacyCloudFeatures).toEqual([]);
+        expect(componentProps.bannerYTTVContentData).toEqual({});
+    });
+
+    test('FeaturesGridwallEditConfig isEmpty function returns true', () => {
+        const result = FeaturesGridwallEditConfig.isEmpty({});
+        expect(result).toBe(true);
+    });
+});
