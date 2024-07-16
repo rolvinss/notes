@@ -1,52 +1,39 @@
-import React from 'react';
-import { render } from '@testing-library/react';
-import '@testing-library/jest-dom/extend-expect';
-import FeaturesGridwall from './FeaturesGridwall';
-import FeaturesGridwallComponent from "../../../components/FeaturesGridwall/FeaturesGridwall/FeaturesGridwallComponent";
+Hi Jaswant/ Sravani – Request you to start joining DTP calls and report your work assignments & its progressive update with SM on regular basics. We understand Venkat/ Gowri usually assign work but still you need to join these common ceremonies along with other team members and report progress.
 
-// Mocking the FeaturesGridwallComponent
-jest.mock('../../../components/FeaturesGridwall/FeaturesGridwall/FeaturesGridwallComponent', () => {
-    return function MockFeaturesGridwallComponent(props) {
-        return (
-            <div data-testid="mock-features-gridwall-component">
-                {JSON.stringify(props)}
-            </div>
-        );
-    };
-});
+ 
 
-describe('FeaturesGridwall', () => {
-    test('renders without crashing', () => {
-        const { container } = render(<FeaturesGridwall />);
-        expect(container).toBeInTheDocument();
-    });
+Let us know for any issues or difficulties. Also can you talk to Gowri and acknowledge on your planned development work for current sprint. We’re not seeing healthy assignment on Jira. Kindly update prior to tomorrow’s morning DTP. Thanks
 
-    test('renders FeaturesGridwallComponent with correct props', () => {
-        const legacyCloudFeatures = [{ feature: 'Feature1' }, { feature: 'Feature2' }];
-        const bannerYTTVContentData = { title: 'Banner Title' };
+ 
 
-        const { getByTestId } = render(
-            <FeaturesGridwall 
-                legacyCloudFeatures={legacyCloudFeatures} 
-                bannerYTTVContentData={bannerYTTVContentData} 
-            />
-        );
+ER 24.10 – Commitment Summery (as of 16th July EOD)
 
-        const componentProps = JSON.parse(getByTestId('mock-features-gridwall-component').textContent);
-        expect(componentProps.legacyCloudFeatures).toEqual(legacyCloudFeatures);
-        expect(componentProps.bannerYTTVContentData).toEqual(bannerYTTVContentData);
-    });
 
-    test('renders correctly with empty legacyCloudFeatures and bannerYTTVContentData', () => {
-        const { getByTestId } = render(<FeaturesGridwall />);
+
+Assignee
 
-        const componentProps = JSON.parse(getByTestId('mock-features-gridwall-component').textContent);
-        expect(componentProps.legacyCloudFeatures).toEqual([]);
-        expect(componentProps.bannerYTTVContentData).toEqual({});
-    });
+Open Defects
 
-    test('FeaturesGridwallEditConfig isEmpty function returns true', () => {
-        const result = FeaturesGridwallEditConfig.isEmpty({});
-        expect(result).toBe(true);
-    });
-});
+User Story
+
+Total Sub-task Created
+
+Jaswant
+
+1
+
+None
+
+4
+
+Sravani
+
+0
+
+None
+
+0
+
+ 
+
+@T, Arunjunai katha pandieswari (Cognizant) / @Kadam, Kishor Sundar (Cognizant)– can you assign few priority defects to them based on their available capacity. We need to target to close all remaining Blockers/ Critical by this Fri.
