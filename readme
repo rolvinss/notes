@@ -1,1 +1,40 @@
-https://www.google.com/url?q=https://verizon.webex.com/verizon/j.php?MTID%3Dma79ab196a3533c15a55ed7dbd82e94d5&sa=D&source=calendar&ust=1721627939930829&usg=AOvVaw28vJkDg2dFjNvNO2IJlVGm
+export const handleDuplicatePerks = (state, toggleOn, perkInfo, viewedDuplicatePerks, dispatch, isPerkToggleClicked) => {
+  if (!isJointTransactionFlow() && !isLoggedIn()) {
+    return true;
+  }
+
+  if (!toggleOn) {
+    return true;
+  }
+
+  const shareablePerks = getShareablePerks(state);
+  if (!shareablePerks.hasOwnProperty(perkInfo.spoId)) {
+    return true;
+  }
+
+  return handlePerkDuplication(state, perkInfo, viewedDuplicatePerks, dispatch, isPerkToggleClicked);
+};
+
+const getShareablePerks = (state) => {
+  return state?.progressivePlans?.progressivePlanAPiResponse?.data?.shareablePerks || {};
+};
+
+const handlePerkDuplication = (state, perkInfo, viewedDuplicatePerks, dispatch, isPerkToggleClicked) => {
+  const perkDuplicateOverlay = state?.progressivePlans?.perkDuplicateOverlay || {};
+  const disclosureDisplayed = new Set(perkDuplicateOverlay?.disclosureDisplayed);
+
+  if (!disclosureDisplayed.has(perkInfo.spoId)) {
+    disclosureDisplayed.add(perkInfo.spoId);
+    perkDuplicateOverlay.disclosureDisplayed = Array.from(disclosureDisplayed);
+    perkDuplicateOverlay.currentSpoId = perkInfo.spoId;
+    perkDuplicateOverlay.show = true;
+    
+    if (isPerkToggleClicked && !viewedDuplicatePerks.has(perkInfo.spoId)) {
+      viewedDuplicatePerks.add(perkInfo.spoId);
+    }
+
+    dispatch({ type: actionTypes.DUPLICATE_PERK_DISCLOSURE, response: perkDuplicateOverlay });
+  }
+
+  return false;
+};
