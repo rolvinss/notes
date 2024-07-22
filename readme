@@ -1,35 +1,70 @@
-// Create a new Date object with today's date
-let today = new Date();
+import * as actionTypes from '../@Redux/actionTypes';
+import { isJointTransactionFlow, isLoggedIn } from '../../../components/common/Helpers';
 
-// Subtract 7 days from today's date
-let sevenDaysAgo = new Date(today);
-sevenDaysAgo.setDate(today.getDate() - 7);
+export const handleDuplicatePerks = (state, toggleOn, perkInfo, viewedDuplicatePerks, dispatch, isPerkToggleClicked) => {
+  let showDisclosurePerk = true;
+  const shareablePerks = state?.progressivePlans?.progressivePlanAPiResponse?.data?.shareablePerks
+    ? state?.progressivePlans?.progressivePlanAPiResponse?.data?.shareablePerks
+    : [];
+  const nextflixplaySubscriptions = state?.progressivePlans?.netflixPlusPlay?.data?.subscriptions
+    ? state?.progressivePlans?.netflixPlusPlay?.data?.subscriptions
+    : [];
+  const shareableperksSpoids = shareablePerks?.map((i) => i.spoId);
+  const hasNetflixSubscription = nextflixplaySubscriptions.find((i) => i.merchantAccountKey === 'NETFLIX');
+  let shareableperkOpened = false;
 
-// Format the date to "MM/DD/YYYY"
-let formattedDate = (sevenDaysAgo.getMonth() + 1).toString().padStart(2, '0') + '/' +
-                    sevenDaysAgo.getDate().toString().padStart(2, '0') + '/' +
-                    sevenDaysAgo.getFullYear();
+  const handleOverlay = () => {
+    showDisclosurePerk = false;
+    const perkDuplicateOverlay = state?.progressivePlans?.perkDuplicateOverlay ? state?.progressivePlans?.perkDuplicateOverlay : {};
+    const disclosureDisplayed = new Set(perkDuplicateOverlay?.disclosureDisplayed);
+    if (!disclosureDisplayed.has(perkInfo.spoId)) {
+      disclosureDisplayed.add(perkInfo.spoId);
+      if (isPerkToggleClicked) {
+        if (!viewedDuplicatePerks.has(perkInfo.spoId)) {
+          perkDuplicateOverlay.show = true;
+          viewedDuplicatePerks.add(perkInfo.spoId);
+        }
+      } else {
+        perkDuplicateOverlay.show = true;
+        viewedDuplicatePerks.add(perkInfo.spoId);
+      }
+      perkDuplicateOverlay.currentSpoId = perkInfo.spoId;
+      perkDuplicateOverlay.disclosureDisplayed = Array.from(disclosureDisplayed);
+    }
+    dispatch({ type: actionTypes.DUPLICATE_PERK_DISCLOSURE, response: perkDuplicateOverlay });
+  };
 
-console.log(formattedDate); // Outputs the date 7 days ago in "MM/DD/YYYY" format
+  if (isJointTransactionFlow() || isLoggedIn()) {
+    if (toggleOn) {
+      shareableperksSpoids.forEach((val) => {
+        if (val === perkInfo.spoId) {
+          shareableperkOpened = true;
+          handleOverlay();
+        }
+      });
+      if (hasNetflixSubscription && !shareableperkOpened) {
+        handleOverlay();
+      }
+    }
+  }
+  return showDisclosurePerk;
+};
 
-
-// Create a new Date object with today's date
-let today = new Date();
-
-// Subtract 7 days from today's date
-let sevenDaysAgo = new Date(today);
-sevenDaysAgo.setDate(today.getDate() - 7);
-
-// Define an array of weekday names
-const weekdays = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
-
-// Define an array of month names
-const months = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
-
-// Format the date to "Tuesday, July 15, 2024"
-let formattedDate = weekdays[sevenDaysAgo.getDay()] + ', ' +
-                    months[sevenDaysAgo.getMonth()] + ' ' +
-                    sevenDaysAgo.getDate() + ', ' +
-                    sevenDaysAgo.getFullYear();
-
-console.log(formattedDate); // Outputs the date 7 days ago in "Tuesday, July 15, 2024" format
+export const handleDisclosurePerks = (perkStaticContent, perkInfo, state, toggleOn, dispatch) => {
+  const disclosurePerksSpoIds = [perkStaticContent?.disneyPerkSpoId];
+  if (!isLoggedIn()) {
+    disclosurePerksSpoIds.push(perkStaticContent?.appleOneIndividualPerkSpoId);
+    disclosurePerksSpoIds.push(perkStaticContent?.appleOneFamilyPerkSpoId);
+  }
+  if (disclosurePerksSpoIds?.includes(perkInfo?.spoId) && toggleOn) {
+    const perkDisclosureOverlay = state?.progressivePlans?.perkDisclosureOverlay ? state?.progressivePlans?.perkDisclosureOverlay : {};
+    const disclosureDisplayed = new Set(perkDisclosureOverlay?.disclosureDisplayed); // Taking out any duplicate from array available.
+    if (!disclosureDisplayed.has(perkInfo?.spoId) && perkInfo?.spoId) {
+      disclosureDisplayed.add(perkInfo?.spoId);
+      perkDisclosureOverlay.show = true;
+      perkDisclosureOverlay.currentSpoId = perkInfo.spoId;
+      perkDisclosureOverlay.disclosureDisplayed = Array.from(disclosureDisplayed);
+    }
+    dispatch({ type: actionTypes.UPDATE_PERK_DISCLOSURE, response: perkDisclosureOverlay });
+  }
+};
