@@ -1,1 +1,35 @@
-https://www.google.com/url?q=https://verizon.webex.com/verizon/j.php?MTID%3Dm9c570afdc39eea5f677cb16d309991cf&sa=D&source=calendar&ust=1722059749795568&usg=AOvVaw2Mr6Cfhdqs9-85X8H3E14z
+// Create a new Date object with today's date
+let today = new Date();
+
+// Subtract 7 days from today's date
+let sevenDaysAgo = new Date(today);
+sevenDaysAgo.setDate(today.getDate() - 7);
+
+// Format the date to "MM/DD/YYYY"
+let formattedDate = (sevenDaysAgo.getMonth() + 1).toString().padStart(2, '0') + '/' +
+                    sevenDaysAgo.getDate().toString().padStart(2, '0') + '/' +
+                    sevenDaysAgo.getFullYear();
+
+console.log(formattedDate); // Outputs the date 7 days ago in "MM/DD/YYYY" format
+
+
+// Create a new Date object with today's date
+let today = new Date();
+
+// Subtract 7 days from today's date
+let sevenDaysAgo = new Date(today);
+sevenDaysAgo.setDate(today.getDate() - 7);
+
+// Define an array of weekday names
+const weekdays = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
+
+// Define an array of month names
+const months = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+
+// Format the date to "Tuesday, July 15, 2024"
+let formattedDate = weekdays[sevenDaysAgo.getDay()] + ', ' +
+                    months[sevenDaysAgo.getMonth()] + ' ' +
+                    sevenDaysAgo.getDate() + ', ' +
+                    sevenDaysAgo.getFullYear();
+
+console.log(formattedDate); // Outputs the date 7 days ago in "Tuesday, July 15, 2024" format
