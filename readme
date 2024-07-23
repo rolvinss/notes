@@ -1,937 +1,250 @@
-/* eslint-disable jsx-a11y/anchor-is-valid */
-import React, { useEffect, useState, Fragment } from 'react';
-import { useDispatch, useSelector } from 'react-redux';
+import React from 'react';
+import { screen, render, fireEvent } from '@testing-library/react';
+import { Provider } from 'react-redux';
+import { BrowserRouter as Router } from 'react-router-dom';
+import SelfCalendarVds from '../../../components/Web/AppointmentScheduleRedesign/SelfCalenderVds';
+import { store } from '../../../configureStore';
+import { Constants } from './SelfCalendarVds/Constants';
+import { mockFuncProps, appointmentProps, appointmentErrorProps, nextProps } from './SelfCalendarVds/TestData';
+import { DummyFormattedDates, spyFuncOn, spyFuncutilOn, spyRedirectOn } from '../Common/jestCommon';
 
-import PropTypes from 'prop-types';
-import { TextLink } from '@vds/buttons';
-import { MostPopular } from '@plans-templates/most-popular';
-import { ReviewDetailsModal } from '@plans-templates/review-details';
-import { PlanExtras } from '@plans-templates/plan-extras';
-import { PlanDiscountModal } from '@plans-templates/plan-discount';
-import parse from 'html-react-parser';
-import styled from 'styled-components';
-import { Body } from '../../common/Typography';
-import { getBuildPlan, GetList, GetPerkDetail } from './action';
-import { apiUrls } from '../../../constants/apiUrl';
-import {
-  getReviewList,
-  scrollToBroadBandFacts,
-  broadBandInfoClick,
-  StyleButton,
-  importantplaninformation,
-  getWayfinder,
-  getDiscountLabel,
-  addPromoBannerLinkClickListner,
-} from '../../../pages/ProgressivePlans/progressivePlan';
-import PerkDuplicateModal from '../../../pages/ProgressivePlans/duplicateMessage';
-import { getBroadBandFactsForPopular } from '../../../pages/ProgressivePlans/broadBandFacts/fccProps';
-import * as actionTypes from '../../../pages/ProgressivePlans/@Redux/actionTypes';
-import PerkDetailOverlay from '../../../pages/ProgressivePlans/perkDetailsModal';
-import {
-  parseHTML,
-  isLoggedIn,
-  isMVA,
-  isMobile,
-  setSession,
-  getColorTheme,
-  isJointTransactionFlow,
-  isSequentialFlow,
-  getIntendType,
-} from '../../common/Helpers';
-import { getPriceContent, getTooltipContents } from '../ProgressivePlans/common';
-import { resetNavigationTitle } from '../../common/MVAApiCall';
-import CommonModal from '../../common/Modal';
-import { FWAContainer } from '../../common/FWAContainer';
-import { Row, Col } from '../../common/Grid';
-import '../../../assets/css/willow.scss';
-import TermsAndConditionsOverlay from '../../../pages/ProgressivePlans/common/termsAndConditions/index';
-import { discountArgs } from '../../common/plansUtils';
-import { eventDispatcher } from '../../common/Tagging/index';
+describe('Test cases for SelfCalendarVds', () => {
+  // let today = new Date();
 
-import { redirectTo } from '../../../redirection';
-import { planJourneyCodes, POPULAR, POPULAR_CUSTOMIZED, UPDATE_PLAN_JOURNEY } from '../../../pages/Common/SessionValues/Constants';
-import { commonErrors } from '../../common/Helpers/constants';
-import Notification from '../../common/Notification/redesign/index';
-import * as Constants from '../../../pages/CBandPlans/Constants';
+  // // Subtract 7 days from today's date
+  // let sevenDaysAgo = new Date(today);
+  // sevenDaysAgo.setDate(today.getDate() - 7);
 
-const BannerDiv = styled.div`
-  background: #5a5a5a;
-  padding: 10px;
-  max-height: 100%;
-`;
-const PopularPlans = (props) => {
-  const userType = isLoggedIn() ? 'aal' : 'nse';
-  const dispatch = useDispatch();
-  const [showModal, SetShowModal] = useState(false);
-  const [showPromoModal, SetShowPromoModal] = useState(false);
-  const [autoPayOn, setAutoPayOn] = useState(true);
-  const [showExtrasModal, setExtras] = useState(false);
-  const [showModalData, setShowModalData] = useState(null);
-  const storeDetails = useSelector((state) => state);
-  const [showFeatureModal, setShowAddressModal] = useState(false);
-  const [showDiscountsModal, setShowDiscountsModal] = useState(null);
-  const lineLevel = storeDetails?.progressivePlans?.progressivePlanAPiResponse?.data?.lineLevelPlans || {};
-  const plansList = (lineLevel?.lines?.length && lineLevel?.lines[0]?.mostPopularPlans) || [];
-  const { contextInfo } = storeDetails?.progressivePlans?.progressivePlanAPiResponse?.data || {};
-  const { staticContent } = storeDetails?.plansReferenceData?.output || {};
-  const { getfwaplansLoaded } = storeDetails?.progressivePlans;
-  const lineActivityType = `${getIntendType()}`;
+  // // Format the date to "MM/DD/YYYY"
+  // let formattedDatetype1 =
+  //   (sevenDaysAgo.getMonth() + 1).toString().padStart(2, '0') +
+  //   '/' +
+  //   sevenDaysAgo.getDate().toString().padStart(2, '0') +
+  //   '/' +
+  //   sevenDaysAgo.getFullYear();
 
-  const modalChanged = (state) => {
-    SetShowModal(state);
-  };
-  const toggleOfferModalVal = (val) => {
-    if (!val) {
-      SetShowPromoModal(false);
-    }
-  };
-  const progressivePlan = () => {
-    if (!storeDetails?.progressivePlans?.fromProgressive) {
-      dispatch({ type: actionTypes.PROGRESSIVE_PLANS_API, value: true });
-    }
-  };
-  const fccLabelContentActions = (data) => {
-    if (!storeDetails?.cBandPlans?.fccContentValue) {
-      dispatch({ type: actionTypes.FCC_LABEL, data });
-    }
-  };
-  const getProductsRefDataId = (data) => {
-    const updatedData = {};
-    if (data && data.length) {
-      data.forEach((element) => {
-        updatedData[element.planId] = element;
-      });
-    }
-    return updatedData;
-  };
-  const closeExtrasModal = (item) => {
-    setExtras(false);
-    const obj = { name: `Review details | ${item?.displayName}  modal`, data: { page: { throttle: 'nsa version|vhi|Plan' } } };
-    eventDispatcher('openView', obj);
-  };
-  const perksDetails = () => {
-    if (!storeDetails?.progressivePlans.perkDetails.perks) {
-      dispatch({ type: actionTypes.PERKS_MODAL_DETAILS_API, value: true });
-    }
-  };
-  const nbxFeedBackCall = () => {
-    dispatch({
-      type: actionTypes.FEEDBACK_API,
-      feedBackTile: plansList,
-      mtn: 'newLine1',
-      dispositionOptionId: 82,
-      lineActivityType,
-      selectedLLP: '',
-      feedbackContextInfo: staticContent?.feedbackContextInfo,
-      nbxSessionId: contextInfo?.sessionId,
-      tacticLocation: 'MostPopularTiles',
-    });
-  };
-  useEffect(() => {
-    // if (!checkIsMidnight()) {
-    //   window.location.href = apiUrls().redirectCBandPlans;
-    // }
-    dispatch({ type: Constants.ERR_OCCURED, response: false });
-    dispatch({ type: Constants.CEF_PLANS_ERROR, response: false, errorMessage: null });
-    dispatch({ type: Constants.INVALID_CASE_ERROR, response: false });
-    props.invokeTaggingAPI();
-    progressivePlan();
-    fccLabelContentActions();
-    addPromoBannerLinkClickListner(showPromoModal, SetShowPromoModal);
-    perksDetails();
-    if (storeDetails?.progressivePlans?.termsAndConditionsOverlay?.from === 'popularPlans') {
-      dispatch({
-        type: actionTypes.SET_TERMS_AND_CONDITIONS_OVERLAY,
-        response: {},
-      });
-    }
-  }, []);
+  // // Format the date to format "Tuesday, July 15, 2024"
+  // let formattedDateType2 =
+  //   weekdays[sevenDaysAgo.getDay()] + ', ' + months[sevenDaysAgo.getMonth()] + ' ' + sevenDaysAgo.getDate() + ', ' + sevenDaysAgo.getFullYear();
+  // appointmentProps.cartDetails.shippingDetails.deliveryDate = formattedDatetype1;
+  // let formattedDateType3 = months[sevenDaysAgo.getMonth()] + ' ' + sevenDaysAgo.getFullYear();
 
-  const filterDuplicatePerks = (shareablePerks, plan) => {
-    const currentPerkLists = (plan?.perksInfoList || []).map((perksInfoList) => perksInfoList.spoId);
-    return currentPerkLists.filter((value) => shareablePerks.some((sposOnAccount) => sposOnAccount.spoId === value));
-  };
-
-  const filterNetflixPerks = (plan) => {
-    const currentPerkLists = (plan?.perksInfoList || []).map((perksInfoList) => perksInfoList.spoId);
-    return currentPerkLists.filter((value) => value === '2839');
-  };
-
-  const duplicateDisclosureHandler = (duplicatePerks) => {
-    const perkDuplicateOverlay = state?.progressivePlans?.perkDuplicateOverlay || {};
-    const disclosureDisplayed = new Set(perkDuplicateOverlay?.disclosureDisplayed);
-    const newDuplicateFound = duplicatePerks.some((spoInAccount) => {
-      if (!disclosureDisplayed.has(spoInAccount)) {
-        disclosureDisplayed.add(spoInAccount);
-        perkDuplicateOverlay.currentSpoId = spoInAccount;
-        perkDuplicateOverlay.disclosureDisplayed = Array.from(disclosureDisplayed);
-        perkDuplicateOverlay.show = true;
-        perkDuplicateOverlay.duplicatePerks = duplicatePerks;
-        return true;
-      }
-      return false;
-    });
-    if (!newDuplicateFound) {
-      dispatch({
-        type: actionTypes.ADD_PLAN_API,
-        payload: 'popularPlan',
-        history: props?.history,
-        planSelectionJourney: planJourneyCodes.POPULAR,
-        duplicatePerks: [],
-      });
-    }
-    dispatch({ type: actionTypes.DUPLICATE_PERK_DISCLOSURE, response: perkDuplicateOverlay });
-  };
-
-  useEffect(() => {
-    if (showModalData && showModalData?.title?.children) {
-      eventDispatcher('openView', { name: `review details | ${showModalData?.title?.children} model` });
-    }
-  }, [showModal]);
-
-  useEffect(() => {
-    if (getfwaplansLoaded && staticContent?.FeedbackApiFlag) {
-      nbxFeedBackCall();
-    }
-  }, [getfwaplansLoaded]);
-
-  setSession('autoPayPreview', autoPayOn ? 'Y' : 'N');
-  const perkRefData = storeDetails?.progressivePlans?.progressivePlanAPiResponse.data?.perkReferenceDataList || [];
-  const selectedPlanInfo = storeDetails?.progressivePlans?.selectedPlanInfo || {};
-  let selectedPlan = storeDetails?.progressivePlans?.selectedPlanInfo?.selectedPlan || {};
-  const selectedPerks = storeDetails?.progressivePlans?.selectedPlanInfo?.selectedPerks || [];
-  const fccContent = storeDetails?.cBandPlans?.fccContentValue;
-  const perkPdpOverlay = storeDetails?.progressivePlans.perkPdpOverlay;
-  const products = (lineLevel?.lines?.length && lineLevel?.lines[0]?.products[0]) || [];
-  const plansFromProducts = products ? products.plans : [];
-  const planIds = plansList?.map((plan) => plan.pricePlanId);
-  const termsAndConditionsOverlay = storeDetails?.progressivePlans?.termsAndConditionsOverlay;
-  const willowFeatures = storeDetails?.plansReferenceData?.output?.willowFeatures || {};
-  const lineActivity = `${getIntendType()}`;
-  const state = useSelector((store) => store);
-  const onPlanClickHandler = (plan, from) => {
-    dispatch({ type: actionTypes.UPDATE_FROM_PROGRESSIVE, response: false });
-    const PlanSelected = plansFromProducts.filter((listItem) => listItem?.planId?.toString() === plan?.pricePlanId?.toString());
-    if (from === 'customizePlan') {
-      selectedPlan = {
-        planId: plan?.pricePlanId,
-        discountedPrice: PlanSelected?.[0]?.price?.discountedPrice,
-        discPriceWOAutoPay: PlanSelected?.[0]?.price?.discPriceWOAutoPay,
-        totalSavings: plan?.price?.totalSavings,
-        regPriceWOAutoPay: plan?.price?.regPriceWOAutoPay,
-        propositionName: plan?.propositionName,
-        propositionId: plan?.propositionId,
-        soiEngagementId: plan?.soiEngagementId,
-        from: 'popularPlanPage',
-        displayName: plan?.propositionName,
-      };
-    } else {
-      selectedPlan = {
-        planId: plan?.pricePlanId,
-        discountedPrice: plan?.price?.discountedPrice,
-        discPriceWOAutoPay: plan?.price?.discPriceWOAutoPay,
-        totalSavings: plan?.price?.totalSavings,
-        regPriceWOAutoPay: plan?.price?.regPriceWOAutoPay,
-        propositionName: plan?.propositionName,
-        propositionId: plan?.propositionId,
-        soiEngagementId: plan?.soiEngagementId,
-        from: 'popularPlanPage',
-        displayName: plan?.propositionName,
-        rank: plan?.rank,
-      };
-    }
-    const perksInfo = plan?.perksInfoList?.map((perk) => {
-      selectedPerks.push({
-        spoId: perk?.spoId,
-        discountedPrice: perk?.price?.discountedPrice,
-        totalAmountOff: perk?.price?.totalAmountOff,
-        locationRefId: perk?.locationRefId,
-        propositionId: perk?.propositionId,
-        soiEngagementId: perk?.soiEngagementId,
-        rank: perk?.rank,
-        from: 'popularPlanPage',
-      });
-      return perk;
-    });
-    dispatch({ type: 'UPDATE_SELECT_DATA_PLAN_PERK', payload: { selectedPlan, selectedPerks, from } });
-    const nbxFeedBackCallSelect = () => {
-      if ((getfwaplansLoaded && selectedPlanInfo) || selectedPlan || selectedPerks?.length > 0) {
-        const selectedPlanPerkList = selectedPlanInfo ? [selectedPlan, ...selectedPerks] : selectedPerks;
-        const feedBackTile =
-          selectedPlanPerkList &&
-          selectedPlanPerkList?.length > 0 &&
-          selectedPlanPerkList.map((item) => ({
-            ...item,
-          }));
-        dispatch({
-          type: actionTypes.FEEDBACK_API,
-          feedBackTile,
-          mtn: 'newLine1',
-          dispositionOptionId: 81,
-          lineActivityType: lineActivity,
-          selectedLLP: '',
-          feedbackContextInfo: staticContent?.feedbackContextInfo,
-          nbxSessionId: contextInfo?.sessionId,
-          tacticLocation: 'MostPopularTiles',
-        });
-      }
-    };
-    if (from === 'addPopularPlan') {
-      if (staticContent?.FeedbackApiFlag) {
-        nbxFeedBackCallSelect();
-      }
-      const shareablePerks = state?.progressivePlans?.progressivePlanAPiResponse?.data?.shareablePerks || [];
-      const nextflixplaySubscriptions = state?.progressivePlans?.netflixPlusPlay?.data?.subscriptions
-        ? state?.progressivePlans?.netflixPlusPlay?.data?.subscriptions
-        : [];
-      const hasNetflixSubscription = nextflixplaySubscriptions.find((i) => i.merchantAccountKey === 'NETFLIX');
-      const duplicatePerks = shareablePerks.length ? filterDuplicatePerks(shareablePerks, plan) : [];
-      if (isLoggedIn() && duplicatePerks.length) {
-        duplicateDisclosureHandler(duplicatePerks);
-      } else if (isLoggedIn() && !duplicatePerks.length && hasNetflixSubscription) {
-        const netflixPerks = (plan?.perksInfoList || []).map((perksInfoList) => perksInfoList.spoId).filter((value) => value === '2839');
-        duplicateDisclosureHandler(netflixPerks);
-      } else {
-        dispatch({ type: actionTypes.ADD_PLAN_API, payload: 'popularPlan', history: props?.history, planSelectionJourney: planJourneyCodes.POPULAR });
-      }
-    } else {
-      if (from === 'customizePlan') {
-        dispatch({ type: actionTypes.UPDATE_PLANS_ACCORD_STATUS, response: true });
-        dispatch({ type: actionTypes.UPDATE_ERROR_NOTIFICATION, payload: false });
-      }
-      redirectTo(apiUrls().progressivePlan, props?.history);
-    }
-    return perksInfo;
-  };
-
-  const getAutoPay = () => {
-    const autoPay = {
-      toggle: {
-        toggle: {
-          on: autoPayOn,
-          onChange: (e) => onAutoPayChange(e?.target?.checked),
-          'data-track': `autopay toggled ${autoPayOn ? 'false' : 'true'}`,
-        },
-        helperText: {
-          children: 'Show pricing with Auto Pay & paper-free billing discount.',
-          tooltip: {
-            ariaLabel: `Show pricing with Auto Pay & paper-free billing discount more info`,
-            children:
-              'When you enroll in Auto Pay and paper free billing using your bank account or Verizon Visa Card, you qualify for a $10/mo discount. Your discount will be applied beginning with your next bill cycle after enrollment in Auto Pay and paper-free billing.',
-          },
-        },
-      },
-    };
-    return autoPay;
-  };
-
-  const showToggleModalDetail = (value) => {
-    setShowAddressModal(value);
-    if (!value) {
-      resetNavigationTitle(isMVA());
-    }
-  };
-  const planInfoModalDetail = () => {
-    setShowAddressModal(true);
-  };
-
-  const getHelperText = () => {
-    const helperText = {
-      children: (
-        <>
-          <span style={{ color: 'grey' }}>* Plan prices include taxes and fees</span>
-          <br />
-          <br />
-          Jump to{' '}
-          <TextLink
-            id="scrollToBroadBandFacts"
-            onClick={() => scrollToBroadBandFacts()}
-            data-track='{"type": "link","name": "broadband facts labels","data":{"page":{"detail":"popular plan" }}}'
-          >
-            broadband facts labels
-          </TextLink>{' '}
-          for pricing and technical information.
-          <br />
-          <br />
-          Please review our{' '}
-          <TextLink
-            onClick={() => planInfoModalDetail()}
-            data-track='{"type": "link","name": "important plan information","data":{"page":{"detail":"important plan information modal" }}}'
-          >
-            important plan information
-          </TextLink>{' '}
-          and{' '}
-          <TextLink
-            onClick={() => broadBandInfoClick()}
-            data-track='{"type": "link","name": "important broadband information.","data":{"page":{"detail":"popular plan" }}}'
-          >
-            important broadband information.
-          </TextLink>
-        </>
-      ),
-    };
-    return helperText;
-  };
-
-  const getFeatureDetails = (data = []) =>
-    data.map((planProductsX) => {
-      const childrenContent = (
-        <>
-          <Body color={getColorTheme() !== '' ? '' : '#FFFFFF'}>{planProductsX.children}</Body>
-          <Body color={getColorTheme() !== '' ? '' : '#A7A7A7'}>{planProductsX?.subtitle}</Body>
-        </>
-      );
-
-      return {
-        ...planProductsX,
-        children: childrenContent,
-      };
-    });
-
-  const onAutoPayChange = (on) => {
-    if (on) {
-      setAutoPayOn(true);
-    } else if (!on) {
-      setAutoPayOn(false);
-    }
-  };
-  const onTermsAndConditionsClick = (plan) => {
-    const data = plan?.perksInfoList?.map((perk) => ({ spoId: perk.spoId }));
-    if (data) {
-      dispatch({
-        type: actionTypes.SET_TERMS_AND_CONDITIONS_OVERLAY,
-        response: { data, show: true, from: 'popularPlans' },
-      });
-    }
-  };
-
-  const getTileList = (planReferenceDataList) => {
-    const tileLists = [];
-    const allPlanDetails = storeDetails?.cBandPlans?.plansDetails || {};
-    plansList.forEach((plan, ind) => {
-      const matchingPlan = planReferenceDataList.filter((list) => list?.planId?.toString() === plan.pricePlanId);
-      const PlanPrice = plansFromProducts.filter((listItem) => listItem.planId?.toString() === plan.pricePlanId);
-      const planProducts = matchingPlan[0]?.planProducts;
-      const featureLists = planProducts && GetList(planProducts);
-      const featureListsFormatted = getFeatureDetails(featureLists);
-
-      const reviewDetailsArgs = {
-        title: {
-          children: matchingPlan[0]?.displayName,
-          primitive: 'h2',
-        },
-        list: planProducts && getReviewList(planProducts, storeDetails),
-        theme: getColorTheme(),
-        'data-track': `{"type": "link","name": "close","data":{"page":{"detail":"Review details | ${matchingPlan[0]?.displayName} modal" }}}`,
-        buttonData: {
-          primary: {
-            children: 'Close',
-            onClick: () => {
-              SetShowModal(false);
-            },
-          },
-        },
-        ariaLabel: `${matchingPlan[0]?.displayName} overlay`,
-      };
-      const { pricePlanId } = plan;
-      const featureData = willowFeatures?.[pricePlanId] || {};
-      const promo_Data = allPlanDetails?.willowPlanExtras?.[pricePlanId] || {};
-      // const isWide = promo_Data?.[`promoChoiceWide_${userType}`];
-      const promoChoice_Title = promo_Data?.[`planChoiceExtrasTtl_${userType}`] || [];
-      const extrasTitle = promo_Data?.[`planExtrasTitle_${userType}`] || [];
-      const promoDescCommon = promo_Data?.[`planExtrasDesc_${userType}`] || [];
-      const promoDesc = promo_Data?.[`planChoiceExtrasDesc_${userType}`] || [];
-      const choiceOlay_Ttl = promo_Data?.[`choiceOlayTtl_${userType}`] || [];
-      const choiceOlayImg = promo_Data?.[`choiceOlayImage_${userType}`] || [];
-      const choiceOlay_Subhead = promo_Data?.[`choiceOlaySubhead_${userType}`] || [];
-      const choiceOlay_SubheadDesc = promo_Data?.[`choiceOlaySubheadDesc_${userType}`] || [];
-      const choiceOlayDesc = promo_Data?.[`choiceOlayDesc_${userType}`] || [];
-      const choiceOlay_Steps = promo_Data?.[`choiceOlaySteps_${userType}`] || [];
-      const choiceOlayFtr = promo_Data?.[`choiceOlayFtr_${userType}`] || [];
-      const choiceOlayFeat = promo_Data?.[`choiceOlayFeat_${userType}`] || [];
-      const choiceOlay_StepsHead = promo_Data?.[`choiceOlayStepsHead_${userType}`] || [];
-      const choiceOlay_FeatHeader = promo_Data?.[`choiceOlayFeatHeader_${userType}`] || [];
-      const planExtrasLink = promo_Data?.[`planExtrasLink_${userType}`] || [];
-      const extraCallout = promo_Data?.[`extrasCallout_${userType}`];
-      const imagesArray = promo_Data?.[`extrasIconCommon_${userType}`];
-      const promosLength = promoChoice_Title.length > 0 || extrasTitle.length > 0;
-      const primaryImage = imagesArray?.length > 0 && imagesArray[0];
-      const choiceOlay_TtlArray = choiceOlay_Ttl?.map(
-        (item, index) =>
-          choiceOlay_Ttl[index] !== '-NA-' && {
-            primitive: 'h2',
-            children: choiceOlay_Ttl[index],
-          },
-      );
-      const choiceOlay_SubheadArray = [...choiceOlay_Subhead]?.map((item, index) => ({
-        title: {
-          children: choiceOlay_Subhead[index] !== '-NA-' && choiceOlay_Subhead[index],
-          primitive: 'h3',
-        },
-        body: {
-          children: choiceOlay_SubheadDesc[index] !== '-NA-' && choiceOlay_SubheadDesc[index],
-        },
-      }));
-      const tempChoiceOlayFeat = choiceOlayFeat?.map((item) => Object.values(item));
-      const choiceOlay_FeatArray = [...tempChoiceOlayFeat]?.map((item, index) => {
-        if (item !== '-NA-') {
-          const parsedItems = [];
-          for (let i = 0; i < item?.length; i++) {
-            parsedItems.push(parseHTML((item[i] !== '-NA-' && item[i]) || ''));
-          }
-          return {
-            title: {
-              children: item.length > 0 && choiceOlay_FeatHeader[index],
-              primitive: 'h3',
-            },
-            list: parsedItems?.map((parsedItem) => ({ children: parsedItem })),
-          };
-        }
-        return null;
-      });
-
-      const tempchoiceOlaySteps = choiceOlay_Steps?.map((item) => Object.values(item));
-
-      const choiceOlay_StepsArray = [...tempchoiceOlaySteps]?.map((item, index) => {
-        if (item !== '-NA-') {
-          const parsedItems = [];
-          for (let i = 0; i < item?.length; i++) {
-            parsedItems.push(parseHTML((item[i] !== '-NA-' && item[i]) || ''));
-          }
-          return {
-            title: {
-              children: item.length > 0 && choiceOlay_StepsHead[index],
-              primitive: 'h3',
-            },
-            list: parsedItems?.map((parsedItem) => ({ children: parsedItem })),
-          };
-        }
-        return null;
-      });
-      const choiceOlay_FtrArray = [...choiceOlayFtr]?.map((item, index) => ({
-        children: choiceOlayFtr[index] !== '-NA-' && choiceOlayFtr[index],
-      }));
-      const choiceOlay_DescArray = choiceOlayDesc?.map((item, index) => ({
-        children: choiceOlayDesc[index] !== '-NA-' && choiceOlayDesc[index],
-      }));
-      const choiceOlay_ImgArray = choiceOlayImg?.map((item, index) => ({
-        src: choiceOlayImg[index] !== '-NA-' && choiceOlayImg[index],
-        alt: choiceOlayImg[index] && choiceOlayImg[index] !== '-NA-' && 'common product image',
-      }));
-
-      const planExtrasArgs = choiceOlay_Ttl?.map((item, index) => ({
-        title: choiceOlay_TtlArray[index],
-        subtitle: choiceOlay_DescArray[index],
-        productImage: choiceOlay_ImgArray[index],
-        intro: choiceOlay_SubheadArray[index],
-        features: choiceOlay_FeatArray[index],
-        redemptionSteps: choiceOlay_StepsArray[index],
-        disclosures: choiceOlay_FtrArray[index],
-        buttonData: {
-          primary: {
-            children: 'Close',
-            onClick: () => {
-              setExtras(null);
-
-              setExtras(false);
-            },
-          },
-        },
-      }));
-      const extrasOverlaydata = planExtrasArgs;
-      const promoListCommon =
-        Array.isArray(extrasTitle) &&
-        extrasTitle?.map(
-          (item, index) =>
-            extrasTitle?.[index] !== '-NA-' && {
-              title: {
-                children: extrasTitle?.[index],
-              },
-              subtitle: {
-                children: (
-                  <>
-                    {promoDescCommon[index]}{' '}
-                    <PlanExtras
-                      // eslint-disable-next-line eqeqeq
-                      opened={showExtrasModal == `${extrasTitle?.[index]}${index}`}
-                      onOpenedChange={(e) => !e && setExtras(null)}
-                      id="planExtrasModal"
-                      data-track={JSON.stringify({
-                        type: 'link',
-                        name: 'Close',
-                        data: { page: { detail: `${extrasTitle?.[index]} modal` } },
-                      })}
-                      // onOpenedChange={toggleShowExtrasModal}
-                      toggleButton={
-                        <TextLink
-                          role="button"
-                          ariaLabel={`${extrasTitle?.[index]} ${planExtrasLink}`}
-                          surface="dark"
-                          type="inline"
-                          data-track={JSON.stringify({
-                            type: 'link',
-                            name: `${planExtrasLink !== '-NA-' && planExtrasLink} | ${extrasTitle?.[index]}`,
-                            data: { page: { detail: `${extrasTitle?.[index]} modal` } },
-                          })}
-                          onClick={() => {
-                            setExtras(`${extrasTitle?.[index]}${index}`);
-                          }}
-                        >
-                          {planExtrasLink !== '-NA-' && planExtrasLink}
-                        </TextLink>
-                      }
-                      {...(planExtrasArgs && planExtrasArgs?.[index])}
-                    />
-                  </>
-                ),
-              },
-            },
-        );
-      const promoList = promoChoice_Title?.map(
-        (item, index) =>
-          promoChoice_Title?.[index] !== '-NA-' && {
-            title: {
-              children: promoChoice_Title?.[index],
-            },
-            subtitle: {
-              children: (
-                <>
-                  {promoDesc[index + (extrasTitle.length > 0 ? 1 : 0)]}{' '}
-                  <PlanExtras
-                    // eslint-disable-next-line eqeqeq
-                    opened={showExtrasModal == `${promoChoice_Title?.[index]}${index}`}
-                    onOpenedChange={(e) => !e && setExtras(null)}
-                    id="planExtrasModal"
-                    data-track={JSON.stringify({
-                      type: 'link',
-                      name: 'close',
-                      data: { page: { detail: `${promoChoice_Title?.[index]} modal` } },
-                    })}
-                    toggleButton={
-                      <TextLink
-                        role="button"
-                        surface={getColorTheme() !== '' ? '' : 'dark'}
-                        ariaLabel={`${promoChoice_Title?.[index]} ${promo_Data?.[`planChoiceExtrasLink_${userType}`]?.[index]}`}
-                        type="inline"
-                        data-track={JSON.stringify({
-                          type: 'link',
-                          name: `${
-                            promo_Data?.[`planChoiceExtrasLink_${userType}`]?.[index] !== '-NA-' &&
-                            promo_Data?.[`planChoiceExtrasLink_${userType}`]?.[index]
-                          } | ${promoChoice_Title?.[index]}`,
-                          data: { page: { detail: `${promoChoice_Title?.[index]} modal` } },
-                        })}
-                        onClick={() => setExtras(`${promoChoice_Title?.[index]}${index}`)}
-                      >
-                        {promo_Data?.[`planChoiceExtrasLink_${userType}`]?.[index] !== '-NA-' &&
-                          promo_Data?.[`planChoiceExtrasLink_${userType}`]?.[index]}
-                      </TextLink>
-                    }
-                    {...(extrasOverlaydata && extrasOverlaydata?.[index + (extrasTitle.length > 0 ? extrasTitle.length : 0)])}
-                  />
-                </>
-              ),
-            },
-          },
-      );
-      const getExtras = {
-        'data-track': promo_Data?.[`extrasCommonDesc_${userType}`] !== '-NA-' && promo_Data?.[`extrasCommonDesc_${userType}`],
-        header: {
-          ...(extraCallout && {
-            badge: {
-              children: extraCallout,
-              fillColor: getColorTheme() ? '' : featureData.order === 2 || featureData.order === '2' ? 'white' : 'red',
-            },
-          }),
-          ...(primaryImage &&
-            primaryImage !== '-NA-' && {
-              image: {
-                src: primaryImage !== '-NA-' && primaryImage,
-              },
-            }),
-          title: {
-            children: promo_Data?.[`extrasCommonDesc_${userType}`] !== '-NA-' && promo_Data?.[`extrasCommonDesc_${userType}`],
-          },
-        },
-        content: [
-          {
-            items: promoListCommon,
-          },
-          {
-            title: {
-              children: promo_Data?.[`extraChoiceHeader_${userType}`] !== '-NA-' && promo_Data?.[`extraChoiceHeader_${userType}`],
-            },
-            helperText: {
-              children: promo_Data?.[`extrasChoiceFooter_${userType}`] !== '-NA-' && promo_Data?.[`extrasChoiceFooter_${userType}`],
-            },
-            items: promoList,
-          },
-        ],
-      };
-      tileLists.push({
-        id: ind.toString(),
-        variant: 'fios',
-        firstPrice: {
-          price: autoPayOn ? plan?.price?.discountedPrice : plan?.price?.discPriceWOAutoPay,
-          term: 'month',
-          superscript: '*',
-        },
-        secondPrice: !isEmpFlow && {
-          leadingText: {
-            children: 'As low as',
-          },
-          price: getPriceContent(Number(featureData?.discountedPrice) || 0, plan),
-          term: 'month',
-          tooltip: getTooltipContents(storeDetails, featureData, plan) && {
-            children: parseHTML(getTooltipContents(storeDetails, featureData, plan) || ''),
-            size: 'small',
-            containerId: ind.toString(),
-            ariaLabel: `As low as ${featureData?.discountedPrice || '0'}/mo more information tooltip`,
-          },
-        },
-        details: [
-          {
-            backgroundColor: 'gray',
-            variant: 'inline',
-            title: { children: plan?.propositionName },
-            textLink: {
-              children: 'Review details',
-              'data-track': `review details | ${plan?.propositionName}`,
-              onClick: () => {
-                SetShowModal(true);
-                setShowModalData(reviewDetailsArgs);
-              },
-            },
-            badgeIndicator: {
-              children: autoPayOn ? PlanPrice[0]?.price?.discountedPrice : PlanPrice[0]?.price?.discPriceWOAutoPay,
-            },
-            list: featureListsFormatted,
-          },
-        ],
-        perks: {
-          items: GetPerkDetail(plan, perkRefData),
-        },
-        ...(Object.keys(promo_Data)?.length >= 0 &&
-          promosLength && {
-            accordion: {
-              variant: 'plan',
-              header: getExtras.header,
-              content: getExtras.content,
-              'data-track': getExtras['data-track'],
-            },
-          }),
-        footer: {
-          helperText: {
-            children: (
-              <>
-                By continuing, you agree to perk{' '}
-                <TextLink
-                  data-track='{"type": "link",  "name": "perks tnc"}'
-                  surface={getColorTheme() !== '' ? '' : 'dark'}
-                  onClick={() => onTermsAndConditionsClick(plan)}
-                  ariaLabel="Terms & Conditions"
-                >
-                  Terms & Conditions.
-                </TextLink>
-              </>
-            ),
-          },
-          buttonGroup: {
-            data: [
-              {
-                use: 'primary',
-                children: 'Add popular plan',
-                'data-track': `{"type": "link" , "name": "add popular plan|${plan?.propositionMessage} plan"}`,
-                onClick: () => {
-                  dispatch({ type: UPDATE_PLAN_JOURNEY, value: POPULAR });
-                  onPlanClickHandler(plan, 'addPopularPlan');
-                },
-              },
-              {
-                use: 'secondary',
-                children: 'Customize this plan',
-                'data-track': `{"type": "link" , "name": "customize this plan|${plan?.propositionMessage} plan"}`,
-                onClick: () => {
-                  dispatch({ type: UPDATE_PLAN_JOURNEY, value: POPULAR_CUSTOMIZED });
-                  onPlanClickHandler(plan, 'customizePlan');
-                },
-              },
-            ],
-          },
-        },
-      });
-    });
-
-    return tileLists;
-  };
-  const allPlan_Details = storeDetails?.cBandPlans?.plansDetails || {};
-  const isEmpFlow = storeDetails?.progressivePlans?.progressivePlanAPiResponse?.data?.employee;
-  const overview_Data = allPlan_Details?.willowOverview?.[0] || {};
-  const { plans } = lineLevel?.lines?.length > 0 ? lineLevel?.lines[0].products[0] || [] : [];
-  const planref = getProductsRefDataId(plans);
-  const sorted_PlanIds = Object.keys(planref || {})
-    .filter((planId) => planref[planId])
-    .sort((planId, nextPlanId) => plans?.[planId]?.order - plans?.[nextPlanId]?.order);
-  const jointMHDiscountSubTitle = "You'll save on your Home Internet plan because you're also purchasing a postpaid mobile unlimited plan today.";
-  let availablePromotions = storeDetails?.progressivePlans?.progressivePlanAPiResponse?.data?.availablePromotions || [];
-  if (isEmpFlow) {
-    availablePromotions = ['Employee'];
-  }
-  const employeeDiscount = planref?.[sorted_PlanIds[0]]?.price?.promos
-    ?.find((promo) => promo?.promoDescription?.includes('ACCESS DISCOUNT'))
-    ?.percentageOff?.split('.')[0];
-  const autopayDiscount = planref?.[sorted_PlanIds[0]]?.price?.promos?.find((promo) => promo?.promoDescription?.includes('AUTOPAY'))?.amountOff;
-  const items = sorted_PlanIds?.map((planId) => {
-    const discount_Promo = planref?.[planId]?.price?.promos?.find((promo) => promo?.promoDescription?.includes('MOBILE + HOME DISCOUNT'));
-    const planName = willowFeatures?.[planId]?.planName;
-    return {
-      title: {
-        children: planName,
-      },
-      amount: {
-        price: `-$${discount_Promo?.amountOff}`,
-        id: `Mobile + Home Discount ${planName} -$${discount_Promo?.amountOff}`,
-      },
-    };
+  test('render without crashing', () => {
+    render(
+      <Provider store={store}>
+        <SelfCalendarVds {...mockFuncProps} />
+      </Provider>,
+    );
   });
-  items.push({
-    title: {
-      children: isJointTransactionFlow() ? jointMHDiscountSubTitle : overview_Data?.MHDiscountSubTitle,
-    },
+
+  test('Check for heading and subheading', () => {
+    render(
+      <Provider store={store}>
+        <SelfCalendarVds {...mockFuncProps} {...appointmentProps} />
+      </Provider>,
+    );
+    const title = screen.getByText(Constants.heading);
+    const subheading = screen.getByText(Constants.subHeading);
+    expect(title).toBeInTheDocument();
+    expect(subheading).toBeInTheDocument();
   });
-  const promo_BannerText = allPlan_Details?.willowOverview?.[0]?.promoBannerText;
-  const promoBannerMoreInfo = allPlan_Details?.willowOverview?.[0]?.promoBannerMoreInfo || '';
 
-  const throttleValues = storeDetails?.SessionValues?.fwaCradleValues;
-  const { planReferenceDataList } = storeDetails?.progressivePlans?.progressivePlanAPiResponse?.data || {};
-  const arrgs = {
-    theme: getColorTheme(),
-    wayfinder: getWayfinder(props, throttleValues),
-    layout: 'side-by-side',
-    title: {
-      children: <span id="pageHeader">Explore popular plans.</span>,
-    },
-    autoPay: !isEmpFlow && getAutoPay(),
-    tiles: plansList && planReferenceDataList && getTileList(planReferenceDataList),
-    broadbandFacts:
-      planIds &&
-      getBroadBandFactsForPopular(planIds, fccContent, '<span id="broadBandFacts" style="font-size:20px">Home broadband facts</span>', 'internal'),
-    buildPlan: getBuildPlan(dispatch, plansList, plansFromProducts, props?.history),
-    helperText: getHelperText(),
-    ...((isLoggedIn() || isSequentialFlow() || isJointTransactionFlow()) &&
-      availablePromotions.length && {
-        subtitle: {
-          children: (
-            <>
-              You have plan discounts.
-              <br />{' '}
-              <PlanDiscountModal
-                id="discountsModal"
-                toggleButton={getDiscountLabel(availablePromotions)}
-                {...discountArgs(
-                  overview_Data,
-                  availablePromotions,
-                  items,
-                  isEmpFlow,
-                  employeeDiscount,
-                  autopayDiscount,
-                  closeExtrasModal,
-                  showDiscountsModal,
-                  setShowDiscountsModal,
-                )}
-              />
-            </>
-          ),
-        },
-      }),
-    headingAlignment: 'left',
-    // sideBySideCarouselMaxWidth: plansList?.length ? `${464 * plansList.length}px` : undefined,
-  };
-  const notificationBannerProps = {
-    renderIf: false,
-    title: '',
-    type: 'warning',
-    serviceInfo: '',
-  };
-  if (storeDetails?.cBandPlans?.showError) {
-    notificationBannerProps.renderIf = true;
-    notificationBannerProps.title = commonErrors && commonErrors?.defaultMessage;
-    notificationBannerProps.serviceInfo = storeDetails?.cBandPlans?.planServiceinfo;
-  }
-  return (
-    <>
-      {promo_BannerText && (
-        <BannerDiv>
-          <Body size="large" color="#FFFFFF">
-            <span className={`${!isMobile() ? 'dispFlex' : ''} flexWrap justifyContentCenter alignItemsCenter fontsize_18`}>
-              {parse(promo_BannerText)}
-            </span>
-          </Body>
-        </BannerDiv>
-      )}
-      <Notification {...notificationBannerProps} />
-      <FWAContainer topBufferAuto enableLiveSupport title={props.title}>
-        <Row>
-          <Col colSizes={{ mobile: 4, tablet: 12, desktop: 12 }}>
-            <MostPopular {...arrgs} />
-          </Col>
-        </Row>
-      </FWAContainer>
-      {showModal && (
-        <ReviewDetailsModal
-          //   id={sortedPlans}
-          {...showModalData}
-          opened={showModal}
-          onOpenedChange={modalChanged}
-        />
-      )}
-      {perkPdpOverlay?.show && <PerkDetailOverlay pageName="popularPlan" />}
-      {termsAndConditionsOverlay?.show && <TermsAndConditionsOverlay />}
-      <PerkDuplicateModal pageName="popularPlan" history={props?.history} />
-      {showFeatureModal && (
-        <CommonModal
-          id="ipiModal"
-          opened={showFeatureModal}
-          onOpenedChange={showToggleModalDetail}
-          className="impTopPad6 modalStyle ipiModal"
-          analyticstrack="5G-close-Imp-Plan-Info-Modal-Movers"
-          ariaLabel="important plan information overlay"
-          dataTrack='{"type": "link","name": "important plan information close","data":{"page":{"detail":"important plan information modal" }}}'
-          modalBody={
-            <Fragment>
-              <div
-                dangerouslySetInnerHTML={{
-                  __html: importantplaninformation,
-                }}
-              />
-              {isMobile() && (
-                <StyleButton size="medium" width="100%" tabIndex="0" onClick={() => setShowAddressModal(false)}>
-                  Close
-                </StyleButton>
-              )}
-            </Fragment>
-          }
-        />
-      )}
-      {promoBannerMoreInfo && (
-        <CommonModal
-          id="offerDetailModal"
-          opened={showPromoModal}
-          onOpenedChange={toggleOfferModalVal}
-          modalBody={parse(promoBannerMoreInfo)}
-          ariaLabel={parse(promoBannerMoreInfo)}
-          showCloseButton={false}
-        />
-      )}
-    </>
-  );
-};
+  test('Check for target heading and target subheading', () => {
+    const monthYearCaption = window.document.createElement('caption');
+    monthYearCaption.setAttribute('class', 'DayPicker-Caption ');
+    window.document.body.appendChild(monthYearCaption);
 
-PopularPlans.propTypes = {
-  invokeTaggingAPI: PropTypes.func,
-  title: PropTypes.string,
-  history: PropTypes.object,
-  subTitle: PropTypes.string,
-};
+    const objTo = document.getElementsByClassName('DayPicker-Caption');
+    const monthYearCaptionDiv = window.document.createElement('div');
+    monthYearCaptionDiv.setAttribute('id', 'DayPicker-Caption-id');
+    objTo[0].appendChild(monthYearCaptionDiv);
 
-export default PopularPlans;
+    const prevMonthArrow = window.document.createElement('button');
+    prevMonthArrow.setAttribute('class', 'DayPicker-NavButton--prev');
+    window.document.body.appendChild(prevMonthArrow);
+
+    const nextMonthArrow = window.document.createElement('button');
+    nextMonthArrow.setAttribute('class', 'DayPicker-NavButton--next');
+    window.document.body.appendChild(nextMonthArrow);
+
+    render(
+      <Provider store={store}>
+        <SelfCalendarVds {...mockFuncProps} {...appointmentProps} />
+      </Provider>,
+    );
+    const heading = screen.getByText(Constants.targetHeading);
+    const subheading = screen.getByText(Constants.targetSubHeading);
+    fireEvent.focus(monthYearCaptionDiv, { target: { innerText: 'caption_div' } });
+    expect(heading).toBeInTheDocument();
+    expect(subheading).toBeInTheDocument();
+  });
+
+  test('Check for error Notification text from props', () => {
+    render(
+      <Router>
+        <Provider store={store}>
+          <SelfCalendarVds {...mockFuncProps} {...appointmentErrorProps} api_fail_text={Constants.apiError} />
+        </Provider>
+      </Router>,
+    );
+    const notification = screen.getByRole(Constants.roleAlert);
+    expect(notification).toBeInTheDocument();
+    expect(notification).toHaveTextContent(Constants.apiError);
+  });
+
+  test('Check for error Notification text from props', () => {
+    spyFuncutilOn(Constants.getItemFromStoreFunc, Constants.setTrueStr);
+    render(
+      <Router>
+        <Provider store={store}>
+          <SelfCalendarVds {...mockFuncProps} {...appointmentErrorProps} />
+        </Provider>
+      </Router>,
+    );
+    const notification = screen.getByRole(Constants.roleAlert);
+    expect(notification).toBeInTheDocument();
+    expect(notification).toHaveTextContent(Constants.optNotificationError);
+  });
+
+  test('Check for cancellation heading and text', () => {
+    render(
+      <Provider store={store}>
+        <SelfCalendarVds {...mockFuncProps} {...appointmentProps} />
+      </Provider>,
+    );
+    const cancellationHead = screen.getByText(Constants.selfCancellationHead);
+    const cancellationSubHead = screen.getByText(Constants.selfCancellationSubHead);
+    expect(cancellationHead).toBeInTheDocument();
+    expect(cancellationSubHead).toBeInTheDocument();
+  });
+
+  test('Check for policy text and checkbox', () => {
+    render(
+      <Provider store={store}>
+        <SelfCalendarVds {...mockFuncProps} {...appointmentProps} />
+      </Provider>,
+    );
+    const policyText = screen.getByText(Constants.policy);
+    const Agreementbox = screen.getByTestId(Constants.checkBoxId);
+    expect(policyText).toBeInTheDocument();
+    expect(Agreementbox).toBeInTheDocument();
+    expect(Agreementbox).not.toBeChecked();
+  });
+
+  test('Check for Complete order button not visible initially', () => {
+    render(
+      <Provider store={store}>
+        <SelfCalendarVds {...mockFuncProps} {...appointmentProps} />
+      </Provider>,
+    );
+    const completeOrder = screen.queryByRole(Constants.roleButton, { name: Constants.completeOrderBtn });
+    expect(completeOrder).toBeNull();
+  });
+
+  test('Check for calendar to be visible', () => {
+    const { formattedDatetype1, formattedDateType2, formattedDateType3 } = DummyFormattedDates();
+    appointmentProps.cartDetails.shippingDetails.deliveryDate = formattedDatetype1;
+    render(
+      <Provider store={store}>
+        <SelfCalendarVds {...mockFuncProps} {...appointmentProps} />
+      </Provider>,
+    );
+    const monthYear = screen.getByText(formattedDateType3);
+    expect(monthYear).toBeInTheDocument();
+  });
+  test('Check for day 15 Feb to be selected', () => {
+    const { formattedDatetype1, formattedDateType2, formattedDateType3 } = DummyFormattedDates();
+    appointmentProps.cartDetails.shippingDetails.deliveryDate = formattedDatetype1;
+    render(
+      <Provider store={store}>
+        <SelfCalendarVds {...mockFuncProps} {...appointmentProps} />
+      </Provider>,
+    );
+    const date15 = screen.getByRole(Constants.roleButton, { name: formattedDateType2 });
+    expect(date15).toBeInTheDocument();
+    expect(date15).toBeEnabled();
+    fireEvent.click(date15);
+    expect(date15).toHaveClass(Constants.activeClass);
+  });
+
+  test('Check for enabled Submit order btn & click on it for NSE', () => {
+    const { formattedDatetype1, formattedDateType2, formattedDateType3 } = DummyFormattedDates();
+    appointmentProps.cartDetails.shippingDetails.deliveryDate = formattedDatetype1;
+    spyFuncutilOn(Constants.getItemFromStoreFunc, Constants.setFalseStr);
+    spyFuncOn(Constants.getSessionFunc, Constants.setY);
+    spyFuncOn(Constants.getAPPIDFunc, Constants.NSE);
+    spyRedirectOn(Constants.goToProcessStepFunc, Constants.setNull);
+    const { rerender } = render(
+      <Provider store={store}>
+        <SelfCalendarVds {...mockFuncProps} {...appointmentProps} />
+      </Provider>,
+    );
+    const date16 = screen.getByRole(Constants.roleButton, { name: formattedDateType2 });
+    expect(date16).toBeInTheDocument();
+    expect(date16).toBeEnabled();
+    fireEvent.click(date16);
+    const Agreementbox = screen.getByTestId(Constants.checkBoxId);
+    expect(Agreementbox).toBeInTheDocument();
+    expect(Agreementbox).not.toBeChecked();
+    fireEvent.click(Agreementbox);
+    // expect(Agreementbox).not.toBeChecked();
+    const completeOrder = screen.queryByRole(Constants.roleButton, { name: Constants.completeOrderBtn });
+    expect(completeOrder).toBeInTheDocument();
+    expect(completeOrder).toBeEnabled();
+    fireEvent.click(completeOrder);
+    rerender(
+      <Provider store={store}>
+        <SelfCalendarVds {...nextProps} {...appointmentProps} />
+      </Provider>,
+    );
+  });
+
+  test('Check for enabled Submit order btn & click on it for AAL', () => {
+    const { formattedDatetype1, formattedDateType2, formattedDateType3 } = DummyFormattedDates();
+    appointmentProps.cartDetails.shippingDetails.deliveryDate = formattedDatetype1;
+    spyFuncutilOn(Constants.getItemFromStoreFunc, Constants.setFalseStr);
+    spyFuncOn(Constants.getSessionFunc, Constants.setY);
+    spyFuncOn(Constants.getAPPIDFunc, Constants.AAL);
+    spyRedirectOn(Constants.goToProcessStepFunc, Constants.setNull);
+    const { rerender } = render(
+      <Provider store={store}>
+        <SelfCalendarVds {...mockFuncProps} {...appointmentProps} />
+      </Provider>,
+    );
+    const date16 = screen.getByRole(Constants.roleButton, { name: formattedDateType2 });
+    expect(date16).toBeInTheDocument();
+    fireEvent.click(date16);
+    const Agreementbox = screen.getByTestId(Constants.checkBoxId);
+    fireEvent.click(Agreementbox);
+    const completeOrder = screen.queryByRole(Constants.roleButton, { name: Constants.completeOrderBtn });
+    expect(completeOrder).toBeEnabled();
+    fireEvent.click(completeOrder);
+    rerender(
+      <Provider store={store}>
+        <SelfCalendarVds {...nextProps} {...appointmentProps} />
+      </Provider>,
+    );
+  });
+
+  test('Check for learnMoreClick function is called ot not on click anchor element', () => {
+    spyFuncOn(Constants.viewport, 'mfapp');
+    render(
+      <Router>
+        <Provider store={store}>
+          <SelfCalendarVds {...mockFuncProps} {...appointmentErrorProps} />
+        </Provider>
+      </Router>,
+    );
+    const learnMoreLink = screen.getByText('learn more here.');
+    fireEvent.click(learnMoreLink);
+  });
+
+  test('render isPreorder', () => {
+    spyFuncOn('isPreorder', true);
+    render(
+      <Provider store={store}>
+        <SelfCalendarVds {...mockFuncProps} />
+      </Provider>,
+    );
+  });
+});
