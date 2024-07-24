@@ -1,22 +1,179 @@
-export const dummyFormattedDates = (helpers) => {
-  const today = new Date();
+import * as actionTypes from '../@Redux/actionTypes';
+import { isJointTransactionFlow, isLoggedIn } from '../../../components/common/Helpers';
+import { handleDuplicatePerks, handleDisclosurePerks } from '../path/to/your/file';
 
-  // Subtract 7 days from today's date
-  const sevenDaysAgo = new Date(today);
-  sevenDaysAgo.setDate(today.getDate() - 7);
+jest.mock('../../../components/common/Helpers');
 
-  // Format the date to "MM/DD/YYYY"
-  const formattedDatetype1 = `${(sevenDaysAgo.getMonth() + 1).toString().padStart(2, '0')}/${sevenDaysAgo.getDate().toString().padStart(2, '0')}/${sevenDaysAgo.getFullYear()}`;
+describe('handleDuplicatePerks', () => {
+  let state;
+  let dispatch;
+  let viewedDuplicatePerks;
+  let perkInfo;
+  let toggleOn;
+  let isPerkToggleClicked;
 
-  // Format the date to format "Tuesday, July 15, 2024"
-  const formattedDateType2 = `${helpers.DAYS[sevenDaysAgo.getDay()]}, ${helpers.MONTHS[sevenDaysAgo.getMonth()]} ${sevenDaysAgo.getDate()}, ${sevenDaysAgo.getFullYear()}`;
+  beforeEach(() => {
+    state = {
+      progressivePlans: {
+        progressivePlanAPiResponse: { data: { shareablePerks: [{ spoId: 'spo1' }] } },
+        netflixPlusPlay: { data: { subscriptions: [{ merchantAccountKey: 'NETFLIX' }] } },
+        perkDuplicateOverlay: { disclosureDisplayed: [] }
+      }
+    };
+    dispatch = jest.fn();
+    viewedDuplicatePerks = new Set();
+    perkInfo = { spoId: 'spo1' };
+    toggleOn = true;
+    isPerkToggleClicked = true;
 
-  // Format the date to "July 2024"
-  const formattedDateType3 = `${helpers.MONTHS[sevenDaysAgo.getMonth()]} ${sevenDaysAgo.getFullYear()}`;
+    isJointTransactionFlow.mockReturnValue(false);
+    isLoggedIn.mockReturnValue(false);
+  });
 
-  return {
-    formattedDatetype1,
-    formattedDateType2,
-    formattedDateType3,
-  };
-};
+  test('should handle overlay when toggleOn is true and perk is shareable', () => {
+    handleDuplicatePerks(state, toggleOn, perkInfo, viewedDuplicatePerks, dispatch, isPerkToggleClicked);
+    expect(dispatch).toHaveBeenCalledWith({
+      type: actionTypes.DUPLICATE_PERK_DISCLOSURE,
+      response: expect.objectContaining({
+        show: true,
+        currentSpoId: 'spo1',
+        disclosureDisplayed: ['spo1']
+      })
+    });
+  });
+
+  test('should not handle overlay when toggleOn is false', () => {
+    toggleOn = false;
+    const result = handleDuplicatePerks(state, toggleOn, perkInfo, viewedDuplicatePerks, dispatch, isPerkToggleClicked);
+    expect(dispatch).not.toHaveBeenCalled();
+    expect(result).toBe(true);
+  });
+
+  test('should handle overlay when Netflix subscription exists and perk is not shareable', () => {
+    perkInfo = { spoId: 'spo2' };
+    handleDuplicatePerks(state, toggleOn, perkInfo, viewedDuplicatePerks, dispatch, isPerkToggleClicked);
+    expect(dispatch).toHaveBeenCalledWith({
+      type: actionTypes.DUPLICATE_PERK_DISCLOSURE,
+      response: expect.objectContaining({
+        show: true,
+        currentSpoId: 'spo2',
+        disclosureDisplayed: ['spo2']
+      })
+    });
+  });
+
+  test('should handle overlay when user is logged in', () => {
+    isLoggedIn.mockReturnValue(true);
+    handleDuplicatePerks(state, toggleOn, perkInfo, viewedDuplicatePerks, dispatch, isPerkToggleClicked);
+    expect(dispatch).toHaveBeenCalledWith({
+      type: actionTypes.DUPLICATE_PERK_DISCLOSURE,
+      response: expect.objectContaining({
+        show: true,
+        currentSpoId: 'spo1',
+        disclosureDisplayed: ['spo1']
+      })
+    });
+  });
+
+  test('should handle overlay when it is a joint transaction flow', () => {
+    isJointTransactionFlow.mockReturnValue(true);
+    handleDuplicatePerks(state, toggleOn, perkInfo, viewedDuplicatePerks, dispatch, isPerkToggleClicked);
+    expect(dispatch).toHaveBeenCalledWith({
+      type: actionTypes.DUPLICATE_PERK_DISCLOSURE,
+      response: expect.objectContaining({
+        show: true,
+        currentSpoId: 'spo1',
+        disclosureDisplayed: ['spo1']
+      })
+    });
+  });
+});
+
+describe('handleDisclosurePerks', () => {
+  let perkStaticContent;
+  let perkInfo;
+  let state;
+  let toggleOn;
+  let dispatch;
+
+  beforeEach(() => {
+    perkStaticContent = {
+      disneyPerkSpoId: 'disney1',
+      appleOneIndividualPerkSpoId: 'apple1',
+      appleOneFamilyPerkSpoId: 'apple2'
+    };
+    perkInfo = { spoId: 'disney1' };
+    state = {
+      progressivePlans: {
+        perkDisclosureOverlay: { disclosureDisplayed: [] }
+      }
+    };
+    toggleOn = true;
+    dispatch = jest.fn();
+
+    isLoggedIn.mockReturnValue(false);
+  });
+
+  test('should handle disclosure perks when toggleOn is true and perk is in disclosurePerksSpoIds', () => {
+    handleDisclosurePerks(perkStaticContent, perkInfo, state, toggleOn, dispatch);
+    expect(dispatch).toHaveBeenCalledWith({
+      type: actionTypes.UPDATE_PERK_DISCLOSURE,
+      response: expect.objectContaining({
+        show: true,
+        currentSpoId: 'disney1',
+        disclosureDisplayed: ['disney1']
+      })
+    });
+  });
+
+  test('should not handle disclosure perks when toggleOn is false', () => {
+    toggleOn = false;
+    handleDisclosurePerks(perkStaticContent, perkInfo, state, toggleOn, dispatch);
+    expect(dispatch).not.toHaveBeenCalled();
+  });
+
+  test('should handle disclosure perks when user is not logged in and perk is Apple One Individual', () => {
+    perkInfo = { spoId: 'apple1' };
+    handleDisclosurePerks(perkStaticContent, perkInfo, state, toggleOn, dispatch);
+    expect(dispatch).toHaveBeenCalledWith({
+      type: actionTypes.UPDATE_PERK_DISCLOSURE,
+      response: expect.objectContaining({
+        show: true,
+        currentSpoId: 'apple1',
+        disclosureDisplayed: ['apple1']
+      })
+    });
+  });
+
+  test('should handle disclosure perks when user is not logged in and perk is Apple One Family', () => {
+    perkInfo = { spoId: 'apple2' };
+    handleDisclosurePerks(perkStaticContent, perkInfo, state, toggleOn, dispatch);
+    expect(dispatch).toHaveBeenCalledWith({
+      type: actionTypes.UPDATE_PERK_DISCLOSURE,
+      response: expect.objectContaining({
+        show: true,
+        currentSpoId: 'apple2',
+        disclosureDisplayed: ['apple2']
+      })
+    });
+  });
+
+  test('should not handle disclosure perks when perk is not in disclosurePerksSpoIds', () => {
+    perkInfo = { spoId: 'otherSpoId' };
+    handleDisclosurePerks(perkStaticContent, perkInfo, state, toggleOn, dispatch);
+    expect(dispatch).not.toHaveBeenCalled();
+  });
+
+  test('should handle disclosure perks when user is logged in', () => {
+    isLoggedIn.mockReturnValue(true);
+    handleDisclosurePerks(perkStaticContent, perkInfo, state, toggleOn, dispatch);
+    expect(dispatch).toHaveBeenCalledWith({
+      type: actionTypes.UPDATE_PERK_DISCLOSURE,
+      response: expect.objectContaining({
+        show: true,
+        currentSpoId: 'disney1',
+        disclosureDisplayed: ['disney1']
+      })
+    });
+  });
+});
