@@ -1,1 +1,31 @@
-https://www.google.com/url?q=https://verizon.webex.com/verizon/j.php?MTID%3Dm814a08a48e640542d6d0c5ed337fe836&sa=D&source=calendar&ust=1722346455616030&usg=AOvVaw1xmxRBr22JbnvS-DRiclLm
+{
+  "name": "backend",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "app1": "cd authorization-gateway && nodemon npm start",
+    "app2": "cd brandpages && nodemon npm start",
+    "app3": "cd calendar && nodemon npm start",
+    "app4": "cd chat && nodemon npm start",
+    "app5": "cd dictionary && nodemon npm start",
+    "app6": "cd emailing && nodemon npm start",
+    "app7": "cd media-service && nodemon npm start",
+    "app8": "cd notifications && nodemon npm start",
+    "app9": "cd payment && nodemon npm start",
+    "app10": "cd posts && npm run start:dev",
+    "app11": "cd webrtc_provider && nodemon npm start",
+    "app12": "cd scheduler && nodemon npm start",
+    "start": "concurrently \"npm run app1\" \"npm run app2\" \"npm run app3\" \"npm run app5\" \"npm run app7\" \"npm run app9\" \"npm run app10\" \"npm run app12\""
+  },
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "concurrently": "^8.0.1",
+    "npm-run-all": "^4.1.5"
+  },
+  "devDependencies": {
+    "nodemon": "^2.0.22"
+  }
+}
