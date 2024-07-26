@@ -1,31 +1,15 @@
-{
-  "name": "backend",
-  "version": "1.0.0",
-  "description": "",
-  "main": "index.js",
-  "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1",
-    "app1": "cd authorization-gateway && nodemon npm start",
-    "app2": "cd brandpages && nodemon npm start",
-    "app3": "cd calendar && nodemon npm start",
-    "app4": "cd chat && nodemon npm start",
-    "app5": "cd dictionary && nodemon npm start",
-    "app6": "cd emailing && nodemon npm start",
-    "app7": "cd media-service && nodemon npm start",
-    "app8": "cd notifications && nodemon npm start",
-    "app9": "cd payment && nodemon npm start",
-    "app10": "cd posts && npm run start:dev",
-    "app11": "cd webrtc_provider && nodemon npm start",
-    "app12": "cd scheduler && nodemon npm start",
-    "start": "concurrently \"npm run app1\" \"npm run app2\" \"npm run app3\" \"npm run app5\" \"npm run app7\" \"npm run app9\" \"npm run app10\" \"npm run app12\""
-  },
-  "author": "",
-  "license": "ISC",
-  "dependencies": {
-    "concurrently": "^8.0.1",
-    "npm-run-all": "^4.1.5"
-  },
-  "devDependencies": {
-    "nodemon": "^2.0.22"
-  }
-}
+Pros:
+
+Has a strong UI technical and analysis skills.
+He targets to complete the deliverables on time.
+He has contributed to the delivery of user stories and defects with involvement.
+He has worked extended hours to contribute to the project.
+He shows interest to learn technically and functionally in the project which is highly appreciable.
+He has learned and contributed to the UTC completion.
+He follows process and always reports the update to the leads without fail.
+He contributed to the user story grooming and analysis.
+Area of Improvement:
+
+Being a good independent contributor, please mentor him and he should start thinking in aspect of taking lead and move on next level.
+He needs to focus on learning back end technologies more to become a full stack developer.
+He has to share the knowledge to help the team grow instead of focusing on completing the task himself.
