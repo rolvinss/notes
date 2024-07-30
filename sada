@@ -1,0 +1,144 @@
+import React, { useEffect, useState } from 'react';
+import styled from 'styled-components';
+import { Modal, ModalTitle, ModalBody, ModalFooter } from '@vds/modals';
+import PropTypes from 'prop-types';
+import { ButtonGroup } from '@vds/buttons';
+import { eventDispatcher } from '../../../../components/common/Tagging';
+import { isLoggedIn } from '../../../../components/common/Helpers';
+
+const OverlayModal = (props) => {
+  const { title, description, message, primaryBtnText, onModalCloseHandler, isOpened, buttonDataGroup, closeBtnText, onModalCancelHandler } = props;
+  const [isModalVisible, setIsModalVisible] = useState(Boolean(isOpened));
+  const isAALflow = isLoggedIn();
+  console.log('propsmodal', props);
+
+  const handleModalClose = () => {
+    setIsModalVisible(false);
+    onModalCloseHandler();
+  };
+
+  const handleModalSecondary = () => {
+    setIsModalVisible(false);
+    onModalCancelHandler();
+  };
+
+  useEffect(() => {
+    eventDispatcher('openView', { name: title });
+  }, []);
+
+  const marginHandler = () => {
+    setTimeout(() => {
+      let doc = document.getElementById('jaswant-default');
+      if (doc && doc.parentElement.tagName === 'SPAN') {
+        let childDoc = doc?.parentElement;
+        childDoc.style.paddingRight = '0px';
+      }
+    });
+  };
+
+  useEffect(() => {
+    setIsModalVisible(isOpened);
+    marginHandler();
+  }, [isOpened]);
+  const dataTrackCloseBtn = { type: 'link', name: 'close', data: { page: { detail: `${title} modal` } } };
+  const dataTrackGotitBtn = { type: 'link', name: 'Got it', data: { page: { detail: `${title} modal` } } };
+  const buttonData = {
+    primary: {
+      width: '100%',
+      children: primaryBtnText || 'Got it',
+      onClick: handleModalClose,
+      'data-track': JSON.stringify(dataTrackGotitBtn),
+    },
+  };
+  if (closeBtnText !== '' && isAALflow) {
+    buttonData.close = {
+      width: '100%',
+      top: '10px',
+      children: closeBtnText || 'Cancel',
+      onClick: handleModalSecondary,
+      'data-track': JSON.stringify(dataTrackGotitBtn),
+    };
+  }
+
+  const duplicatePerkButtons = [
+    {
+      children: primaryBtnText,
+      size: 'large',
+      use: 'primary',
+      onClick: handleModalClose,
+      'data-track': JSON.stringify(dataTrackGotitBtn),
+    },
+  ];
+
+  if (closeBtnText) {
+    duplicatePerkButtons.push({
+      children: closeBtnText,
+      size: 'large',
+      use: 'secondary',
+      onClick: handleModalSecondary,
+      'data-track': JSON.stringify(dataTrackGotitBtn),
+    });
+  }
+  return (
+    <>
+      <Modal
+        {...(isAALflow ? { width: '688px' } : {})}
+        surface="light"
+        fullScreenDialog={false}
+        disableOutsideClick
+        ariaLabel={title}
+        opened={isModalVisible}
+        data-track={JSON.stringify(dataTrackCloseBtn)}
+        onOpenedChange={(e) => {
+          setIsModalVisible(e);
+          if (!e && isModalVisible) {
+            onModalCloseHandler();
+          }
+        }}
+      >
+        <ModalBodyWrapper id="jaswant-modal">
+          <ModalTitle>{title}</ModalTitle>
+          <ModalBody>{description}</ModalBody> <ModalBody>{message}</ModalBody>
+          <ModalBody>
+            {buttonDataGroup && <ButtonGroup childWidth="100%" viewport="desktop" rowQuantity={{ desktop: 1 }} data={buttonDataGroup} />}
+          </ModalBody>
+          {!buttonDataGroup &&
+            (isAALflow ? (
+              <ModalFooter>
+                <ButtonGroup childWidth="100%" rowQuantity={{ desktop: 2, mobile: 1 }} data={duplicatePerkButtons} alignment="center" />
+              </ModalFooter>
+            ) : (
+              <ButtonWrapper>
+                <ModalFooter buttonData={buttonData} />
+              </ButtonWrapper>
+            ))}
+        </ModalBodyWrapper>
+      </Modal>
+    </>
+  );
+};
+
+export default OverlayModal;
+
+const ButtonWrapper = styled.div`
+  max-width: 100px;
+  @media (max-width: 767px) {
+    max-width: 100%;
+  }
+`;
+const ModalBodyWrapper = styled.div.attrs((props) => ({
+  id: props.id || 'jaswant-default',
+}))``;
+
+OverlayModal.propTypes = {
+  title: PropTypes.string,
+  description: PropTypes.string,
+  message: PropTypes.string,
+  primaryBtnText: PropTypes.string,
+  closeBtnText: PropTypes.string,
+  onModalCloseHandler: PropTypes.func,
+  onModalCancelHandler: PropTypes.func,
+  isOpened: PropTypes.bool,
+  fromPopularPlan: PropTypes.bool,
+  buttonDataGroup: PropTypes.any,
+};
