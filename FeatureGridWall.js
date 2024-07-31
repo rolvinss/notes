@@ -1,128 +1,174 @@
-import { getAddonsRefData } from '../../../../../../components/Web/Addons/redesign/Components/FunctionalRedesign/addonsCommon';
-import { getProductRefData } from '../../../../../../utils/plansReference';
+import { getAddonData } from '../../../../../../../components/Web/Addons/redesign/Components/FunctionalRedesign/addonsCommon';
 
-jest.mock('../../../../../../utils/plansReference');
-
-describe('Render getAddonsRefData', () => {
-    test('Test getAddonsRefData', () => {
-        const accessoryDetails = [
-            {
-                skuDetails: { sorId: 'LVSKIHP', productId: 'LVSKIHP' }
-            },
-            {
-                skuDetails: { sorId: 'ASK-STI6220', productId: 'ASK-STI6220' }
-            }
-        ];
-        
-        const plansReferenceData = {
-            'LVSKIHP': {
+describe('Render getAddonData', () => {
+    test('Test getAddonData with valid serviceData and refData', () => {
+        const serviceData = {
+            skuDetails: {
                 sorId: 'LVSKIHP',
                 productId: 'LVSKIHP',
-                displayName: 'Plan 1',
-                planName: 'Plan One'
+                categoryType: 'whw',
+                priceText: '10',
+                regularPrice: '20',
+                discountPrice: '5',
             },
-            'ASK-STI6220': {
-                sorId: 'ASK-STI6220',
-                productId: 'ASK-STI6220',
-                displayName: 'Plan 2',
-                planName: 'Plan Two'
-            }
+            type: 'whwServices',
         };
 
-        getProductRefData.mockImplementation((sorId, productId, plansReferenceData) => {
-            return [plansReferenceData[sorId]];
-        });
-
-        const result = getAddonsRefData(accessoryDetails, plansReferenceData);
-
-        expect(result).toEqual([
+        const refData = [
             {
                 sorId: 'LVSKIHP',
                 productId: 'LVSKIHP',
-                displayName: 'Plan 1',
-                planName: 'Plan One'
+                features: 'Feature 1',
+                featuresRedemption: 'Feature 2',
+                planName: 'Plan A',
+                displayName: 'Plan A Display',
+                detailModalHeader: 'Header',
+                detailModalBody: 'Body',
+                promoDetailModalBody: 'Promo Body',
+                detailModalBody5G: '5G Body',
+                detailModalBodyLTE: 'LTE Body',
+                useBrandLogoNamming: 'Brand Logo',
+                imageUrl: 'http://example.com/image.jpg',
+                youtTubePromoBanner: 'YouTube Banner',
+                youTubePricingTextLabel: 'YouTube Pricing Text',
+                promoBannerDetailsModalHeader: 'Promo Header',
+                promoBannerDetailsModalContent: 'Promo Content',
+                superscriptContent: 'Superscript',
             },
-            {
-                sorId: 'ASK-STI6220',
-                productId: 'ASK-STI6220',
-                displayName: 'Plan 2',
-                planName: 'Plan Two'
-            }
-        ]);
-    });
+        ];
 
-    test('Test getAddonsRefData with empty accessoryDetails', () => {
-        const accessoryDetails = [];
-        const plansReferenceData = {
-            'LVSKIHP': {
-                sorId: 'LVSKIHP',
-                productId: 'LVSKIHP',
-                displayName: 'Plan 1',
-                planName: 'Plan One'
-            },
-            'ASK-STI6220': {
-                sorId: 'ASK-STI6220',
-                productId: 'ASK-STI6220',
-                displayName: 'Plan 2',
-                planName: 'Plan Two'
-            }
+        const expectedData = {
+            title: 'Plan A',
+            newPrice: '10',
+            features: 'Feature 2',
+            pricingText: 'Included',
+            oldPrice: '20',
+            cap: undefined,
+            color: undefined,
+            type: 'whwServices',
+            addonProductData: serviceData,
+            detailModalHeader: 'Header',
+            detailModalBody: 'Body',
+            promoDetailModalBody: 'Promo Body',
+            detailModalBody5G: '5G Body',
+            detailModalBodyLTE: 'LTE Body',
+            useBrandLogoNamming: 'Brand Logo',
+            imageUrl: 'http://example.com/image.jpg',
+            discountAvailed: '5',
+            addonRefData: refData[0],
+            youtTubePromoBanner: 'YouTube Banner',
+            youTubePricingTextLabel: 'YouTube Pricing Text',
+            promoBannerDetailsModalHeader: 'Promo Header',
+            promoBannerDetailsModalContent: 'Promo Content',
+            superscriptContent: 'Superscript',
         };
 
-        const result = getAddonsRefData(accessoryDetails, plansReferenceData);
-
-        expect(result).toEqual([]);
+        const result = getAddonData(serviceData, refData);
+        expect(result).toEqual(expectedData);
     });
 
-    test('Test getAddonsRefData with empty plansReferenceData', () => {
-        const accessoryDetails = [
-            {
-                skuDetails: { sorId: 'LVSKIHP', productId: 'LVSKIHP' }
-            },
-            {
-                skuDetails: { sorId: 'ASK-STI6220', productId: 'ASK-STI6220' }
-            }
-        ];
-        
-        const plansReferenceData = {};
-
-        const result = getAddonsRefData(accessoryDetails, plansReferenceData);
-
-        expect(result).toEqual([]);
-    });
-
-    test('Test getAddonsRefData with undefined accessoryDetails', () => {
-        const plansReferenceData = {
-            'LVSKIHP': {
+    test('Test getAddonData with missing refData', () => {
+        const serviceData = {
+            skuDetails: {
                 sorId: 'LVSKIHP',
                 productId: 'LVSKIHP',
-                displayName: 'Plan 1',
-                planName: 'Plan One'
+                categoryType: 'whw',
+                priceText: '10',
+                regularPrice: '20',
+                discountPrice: '5',
             },
-            'ASK-STI6220': {
-                sorId: 'ASK-STI6220',
-                productId: 'ASK-STI6220',
-                displayName: 'Plan 2',
-                planName: 'Plan Two'
-            }
+            type: 'whwServices',
         };
 
-        const result = getAddonsRefData(undefined, plansReferenceData);
+        const refData = [];
 
-        expect(result).toEqual([]);
+        const expectedData = {};
+
+        const result = getAddonData(serviceData, refData);
+        expect(result).toEqual(expectedData);
     });
 
-    test('Test getAddonsRefData with undefined plansReferenceData', () => {
-        const accessoryDetails = [
-            {
-                skuDetails: { sorId: 'LVSKIHP', productId: 'LVSKIHP' }
-            },
-            {
-                skuDetails: { sorId: 'ASK-STI6220', productId: 'ASK-STI6220' }
-            }
-        ];
-        
-        const result = getAddonsRefData(accessoryDetails, undefined);
+    test('Test getAddonData with missing serviceData', () => {
+        const serviceData = null;
 
-        expect(result).toEqual([]);
+        const refData = [
+            {
+                sorId: 'LVSKIHP',
+                productId: 'LVSKIHP',
+                features: 'Feature 1',
+                featuresRedemption: 'Feature 2',
+                planName: 'Plan A',
+                displayName: 'Plan A Display',
+                detailModalHeader: 'Header',
+                detailModalBody: 'Body',
+                promoDetailModalBody: 'Promo Body',
+                detailModalBody5G: '5G Body',
+                detailModalBodyLTE: 'LTE Body',
+                useBrandLogoNamming: 'Brand Logo',
+                imageUrl: 'http://example.com/image.jpg',
+                youtTubePromoBanner: 'YouTube Banner',
+                youTubePricingTextLabel: 'YouTube Pricing Text',
+                promoBannerDetailsModalHeader: 'Promo Header',
+                promoBannerDetailsModalContent: 'Promo Content',
+                superscriptContent: 'Superscript',
+            },
+        ];
+
+        const expectedData = {};
+
+        const result = getAddonData(serviceData, refData);
+        expect(result).toEqual(expectedData);
+    });
+
+    test('Test getAddonData with partial data', () => {
+        const serviceData = {
+            skuDetails: {
+                sorId: 'LVSKIHP',
+                productId: 'LVSKIHP',
+                categoryType: 'whw',
+                priceText: '10',
+                regularPrice: '20',
+                discountPrice: '5',
+            },
+            type: 'whwServices',
+        };
+
+        const refData = [
+            {
+                sorId: 'LVSKIHP',
+                productId: 'LVSKIHP',
+                features: 'Feature 1',
+                planName: 'Plan A',
+            },
+        ];
+
+        const expectedData = {
+            title: 'Plan A',
+            newPrice: '10',
+            features: 'Feature 1',
+            pricingText: 'Included',
+            oldPrice: '20',
+            cap: undefined,
+            color: undefined,
+            type: 'whwServices',
+            addonProductData: serviceData,
+            detailModalHeader: undefined,
+            detailModalBody: undefined,
+            promoDetailModalBody: undefined,
+            detailModalBody5G: undefined,
+            detailModalBodyLTE: undefined,
+            useBrandLogoNamming: undefined,
+            imageUrl: undefined,
+            discountAvailed: '5',
+            addonRefData: refData[0],
+            youtTubePromoBanner: undefined,
+            youTubePricingTextLabel: undefined,
+            promoBannerDetailsModalHeader: undefined,
+            promoBannerDetailsModalContent: undefined,
+            superscriptContent: undefined,
+        };
+
+        const result = getAddonData(serviceData, refData);
+        expect(result).toEqual(expectedData);
     });
 });
