@@ -1,1 +1,383 @@
-https://www.google.com/url?q=https://verizon.webex.com/verizon/j.php?MTID%3Dm4c4445559569ad813c869304537c310a&sa=D&source=calendar&ust=1722780983064072&usg=AOvVaw1o_lUPpxDsDrOEV9NEfcLP
+import { store } from '../../../../../../configureStore';
+import { getProductRefData } from '../../../../../../utils/plansReference';
+import { eventDispatcher, updateEventInfo } from '../../../../../common/Tagging';
+import { getDepletionType } from '../../../../../common/CommonUtils';
+import { logMetrics, ACCESSORIES, USER_INFO, ADDTOCART_BUTTON_CLICK, REMOVE_BUTTON_CLICK } from '../../../../../../services/metricsService';
+import { isMobile, getSession, isWHWP2 } from '../../../../../common/Helpers';
+
+export const getAddonsRefData = (accessoryDetails, plansReferenceData) =>
+  (accessoryDetails || []).map((addon) => getProductRefData(addon.skuDetails.sorId, addon.skuDetails.productId, plansReferenceData)).flat();
+export const getWhwRefData = (whwDetails, plansReferenceData) =>
+  (whwDetails || [])?.map((addon) => getProductRefData(addon?.skuDetails?.sorId, addon?.skuDetails?.productId, plansReferenceData)).flat();
+
+/**
+ * Clone of the prepareTilesData function in streamingService.js
+ * To be refactored in future
+ *  As scope binding didn't work, opted for passthroughState
+ */
+export const prepareTilesDataClone = (accessoryDetails, addOnLoadingDone, passthroughState) => {
+  const tilesData = [];
+  try {
+    const thisRef = this || passthroughState;
+    for (let i = 0; i < accessoryDetails.length; i++) {
+      let quantityVal;
+      let identifier;
+      const prodId = accessoryDetails[i].skuDetails.sorId ? accessoryDetails[i].skuDetails.sorId : accessoryDetails[i].skuDetails.productId;
+      const prodType = accessoryDetails[i].type;
+      let planName;
+      let planInfo = getProductRefData(
+        accessoryDetails[i].skuDetails.sorId,
+        accessoryDetails[i].skuDetails.productId,
+        thisRef?.props?.plansReferenceData,
+      );
+      planInfo = planInfo && planInfo.length > 0 ? planInfo[0] : '';
+
+      if (planInfo) {
+        planName = planInfo.displayName ? planInfo.displayName : planInfo.planName;
+      }
+      if (thisRef.props.cartDetails && thisRef.props.cartDetails.dueTodayList) {
+        for (let j = 0; j < thisRef.props.cartDetails.dueTodayList.length; j++) {
+          const cartId = thisRef.props.cartDetails.dueTodayList[j].sorId
+            ? thisRef.props.cartDetails.dueTodayList[j].sorId
+            : thisRef.props.cartDetails.dueTodayList[j].productId;
+          if (cartId === prodId && prodType !== 'streamingService') {
+            quantityVal = thisRef.props.cartDetails.dueTodayList[j].quantity;
+            identifier = prodId;
+            if (!thisRef.props.skipBtnCall) {
+              store.dispatch({ type: 'SHOW_SKIP_BTN', response: true });
+              store.dispatch({ type: 'SKIP_BTN_CALLED', response: true });
+            }
+            if (!thisRef.state.notificationCalled && thisRef.props.selectedProdID && thisRef.props.selectedProdID === cartId && addOnLoadingDone) {
+              thisRef.showNotification(planName, 1, thisRef.props.selectedProdID, prodType);
+            }
+            if (
+              thisRef.props.showAddNotification &&
+              thisRef.props.showAddNotification !== '' &&
+              cartId === thisRef.props.selectedProdID &&
+              !thisRef.state.hideNotificationCalled
+            ) {
+              thisRef.setTimeOutCall();
+            }
+          }
+        }
+      }
+      if (quantityVal !== undefined) {
+        const quanInt = parseInt(quantityVal);
+        if (quanInt >= 1) {
+          thisRef.changeSkip(true);
+        } else {
+          thisRef.changeSkip(false);
+        }
+      } else {
+        thisRef.changeSkip(false);
+      }
+      if (thisRef.props.cartDetails && thisRef.props.cartDetails.dueMonthlyList) {
+        for (let k = 0; k < thisRef.props.cartDetails.dueMonthlyList.length; k++) {
+          const cartId = thisRef.props.cartDetails.dueMonthlyList[k]?.sorId
+            ? thisRef.props.cartDetails.dueMonthlyList[k].sorId
+            : thisRef.props.cartDetails.dueMonthlyList[k]?.productId;
+          if (cartId === prodId && (prodType === 'whwServices' || prodType === 'streamingService')) {
+            quantityVal = '1';
+            identifier = prodId;
+            if (!thisRef.props.skipBtnCall) {
+              store.dispatch({ type: 'SHOW_SKIP_BTN', response: true });
+              store.dispatch({ type: 'SKIP_BTN_CALLED', response: true });
+            }
+            if (!thisRef.state.notificationCalled && thisRef.props.selectedProdID && thisRef.props.selectedProdID === cartId && addOnLoadingDone) {
+              thisRef.showNotification(planName, quantityVal, thisRef.props.selectedProdID, prodType);
+            }
+            if (
+              thisRef.props.showAddNotification &&
+              thisRef.props.showAddNotification !== '' &&
+              cartId === thisRef.props.selectedProdID &&
+              !thisRef.state.hideNotificationCalled
+            ) {
+              thisRef.setTimeOutCall();
+            }
+          }
+          if (quantityVal !== undefined) {
+            const qunInt = parseInt(quantityVal);
+            if (qunInt >= 1) {
+              thisRef.changeSkip(true);
+            } else {
+              thisRef.changeSkip(false);
+            }
+          } else {
+            thisRef.changeSkip(false);
+          }
+        }
+      }
+      if (identifier && quantityVal) {
+        tilesData.push({ [identifier]: { quantity: quantityVal } });
+      }
+    }
+  } catch (error) {
+    console.log(error);
+  }
+  return tilesData;
+};
+
+/**
+ * To be refactored in future
+ *  Clone of onBtnClick function in ButtonQuantity.js
+ */
+export const onBtnClickClone = (e, customProps) => {
+  try {
+    const props = customProps || this?.props;
+    let data;
+    const depletionType = getDepletionType(props.isCartPage ? props.dueTodayList : props.postAccessory?.cartDetails?.dueTodayList);
+    let pageName;
+    if (props.isCartPage) {
+      pageName = 'editFromCart';
+    }
+
+    const oddOnList = props && props.postAccessory && props.postAccessory.addonObj ? props.postAccessory.addonObj : [];
+    let updateType = '';
+    if (e.currentTarget.id === '_Minus') {
+      //   this.setState({ buttonRemoveTextChange: 'minus' });
+      if (props.isCartPage) {
+        props.validateCartNeeded(true);
+        props.quantityChanged(false);
+      }
+      data = {
+        removeAccessories: {
+          prodId: props.prodId,
+          qty: 1,
+        },
+        depletionType,
+      };
+      updateType = 'removeFromCart';
+      eventDispatcher(updateType, data);
+      logMetrics(ACCESSORIES, USER_INFO, REMOVE_BUTTON_CLICK);
+      if (props.isAddonsPage) {
+        // this.setState({
+        //   decrementClicked: true,
+        // });
+        props.onChangingStreamTV('remove', props?.quantity, props?.name);
+        // this.setState({buttonRemoveTextChange: 'removed'})
+      }
+    } else if (e.currentTarget.id === '_Increment') {
+      store.dispatch({ type: 'LOADING_DONE', response: false });
+      if (props.isCartPage) {
+        // props.resetValidateCart('InProgress');
+        props.validateCartNeeded(true);
+        props.quantityChanged(true);
+        // this.setState({ quantityIncreased: true });
+      }
+
+      data = {
+        addAccessories: {
+          prodId: props.prodId,
+          qty: 1,
+        },
+        depletionType,
+      };
+      if (props.isAddonsPage && this?.setSelectedProduct) {
+        // TODO: Need to check if this is required
+        this.setSelectedProduct(props.prodId);
+      }
+      updateType = 'addToCart';
+      eventDispatcher(updateType, data);
+      updateEventInfo('scAdd');
+      logMetrics(ACCESSORIES, USER_INFO, ADDTOCART_BUTTON_CLICK);
+      if (props.isAddonsPage) {
+        props.onChangingStreamTV('add');
+      }
+    }
+    props.postAccessory.AddonAccessory(data, 'streamingDevice', oddOnList, updateType, pageName);
+  } catch (error) {
+    console.log(error);
+  }
+};
+
+/*
+ * To be refactored in future
+ * Clone of prepareTilesData from AddonProducts.js
+ * As scope binding didn't work, opted for passthroughState
+ */
+export const prepareTilesDataServiceClone = (addonProducts, cartDetails, selectedProdID, addOnLoadingDone, passthroughState) => {
+  const thisRef = this || passthroughState;
+  const tilesData = [];
+
+  for (let i = 0; i < addonProducts?.length; i++) {
+    let quantity;
+    let prodId;
+    let todayPhone;
+    let monthlyPhone;
+    let homeId;
+    const prodType = addonProducts[i].type;
+    const SessionValueWHW = getSession('whwSpoDetails');
+    const parsedSession = SessionValueWHW && JSON.parse(SessionValueWHW);
+    const addedRedemptionSPO = parsedSession?.spoDetails.find((obj) => obj.current === true);
+    const extenderOnProfile = parsedSession?.extenderOnProfile;
+    let planName;
+    let planInfo = getProductRefData(addonProducts[i]?.skuDetails?.sorId, addonProducts[i]?.skuDetails?.productId, thisRef.props?.plansReferenceData);
+    if (prodType === 'homePhoneService') {
+      planInfo = planInfo.filter((each) => each?.sorId === addonProducts?.[i]?.skuDetails?.sorId);
+    }
+    planInfo = planInfo && planInfo.length > 0 ? planInfo[0] : '';
+    if (planInfo) {
+      planName = planInfo.displayName ? planInfo.displayName : planInfo.planName;
+    }
+    if (addonProducts[i].skuDetails) {
+      homeId = addonProducts[i].skuDetails.sorId ? addonProducts[i].skuDetails.sorId : '';
+      prodId =
+        prodType === 'whwServices'
+          ? addonProducts[i]?.skuDetails?.skuId
+          : addonProducts[i]?.skuDetails?.productId
+            ? addonProducts[i]?.skuDetails?.productId
+            : '';
+    }
+    if (prodType === 'homePhoneService' && !thisRef.cBand) {
+      todayPhone = thisRef.getTodayPhone(cartDetails, homeId);
+      monthlyPhone = thisRef.getMonthlyPhone(cartDetails, prodId);
+      // getNotification
+
+      if (monthlyPhone && todayPhone) {
+        quantity = '1';
+        thisRef.getNotification(selectedProdID, planName, prodId, false);
+      }
+    } else if (prodType === 'homePhoneService') {
+      if (cartDetails && cartDetails.dueMonthlyList) {
+        cartDetails.dueMonthlyList.map((item) => {
+          const cartId = item.sorId ? item.sorId : item.productId;
+          if (cartId === prodId) {
+            quantity = '1';
+          }
+          return quantity;
+        });
+      }
+    } else if (prodType === 'whwServices') {
+      if (cartDetails && cartDetails?.dueMonthlyList) {
+        cartDetails.dueMonthlyList.map((item) => {
+          const cartId = item?.sorId ? item?.sorId : item?.productId;
+          if (cartId === prodId) {
+            quantity = '1';
+            if (!thisRef.props?.skipBtnCall && item?.itemType?.toLowerCase() !== 'whwbasic') {
+              store.dispatch({ type: 'SHOW_SKIP_BTN', response: true });
+              store.dispatch({ type: 'SKIP_BTN_CALLED', response: true });
+            }
+          }
+          return quantity;
+        });
+      }
+      if (cartDetails && cartDetails?.dueTodayList) {
+        cartDetails.dueTodayList.map((item) => {
+          const cartId = item?.sorId ? item?.sorId : item?.productId;
+          if (cartId === prodId) {
+            quantity = '1';
+            if (!thisRef.props?.skipBtnCall && item?.itemType?.toLowerCase() !== 'whwbasic') {
+              store.dispatch({ type: 'SHOW_SKIP_BTN', response: true });
+              store.dispatch({ type: 'SKIP_BTN_CALLED', response: true });
+            }
+          }
+          return quantity;
+        });
+      } else if (isWHWP2() && !cartDetails?.length > 0 && addedRedemptionSPO && extenderOnProfile && extenderOnProfile !== '0'  && extenderOnProfile !== '2' ) {
+        const cartId = addedRedemptionSPO?.spoid;
+        if (cartId === prodId) {
+          quantity = !cartDetails && addedRedemptionSPO?.min;
+        }
+      }
+    } else if (prodType !== 'homePhoneService') {
+      if (cartDetails && cartDetails.dueMonthlyList) {
+        // eslint-disable-next-line no-loop-func
+        cartDetails.dueMonthlyList.map((item) => {
+          const cartId = item.sorId ? item.sorId : item.productId;
+          if (cartId === homeId) {
+            quantity = '1';
+            if (!thisRef.props.skipBtnCall) {
+              store.dispatch({ type: 'SHOW_SKIP_BTN', response: true });
+              store.dispatch({ type: 'SKIP_BTN_CALLED', response: true });
+            }
+            if (!thisRef.state.notificationCalled && selectedProdID === cartId && addOnLoadingDone) {
+              thisRef.setState({
+                scrollPosition: window.scrollY,
+              });
+              if (!isMobile()) {
+                window.scrollTo(0, 0);
+              }
+              thisRef.showNotification(planName, 0, selectedProdID);
+              setTimeout(() => {
+                thisRef.hideNotification();
+              }, 6000);
+            }
+          }
+          return quantity;
+        });
+      }
+    }
+    if (quantity === '1') {
+      thisRef.changeSkip(true);
+    } else {
+      thisRef.changeSkip(false);
+    }
+    const identifier = prodId || addonProducts[i]?.skuDetails?.sorId;
+    tilesData.push({ [identifier]: { quantity, productId: prodId, sorId: homeId } });
+  }
+  return tilesData;
+};
+
+/** To be refactored in future, addonRefData should be returned instead of individual props */
+export const getAddonData = (serviceData, refData) => {
+  const addonRefData = refData?.find((serviceRefData) =>
+    serviceRefData?.sorId ? serviceData.skuDetails?.sorId === serviceRefData?.sorId : serviceData.skuDetails?.productId === serviceRefData?.productId,
+  );
+  if (!addonRefData) {
+    return {};
+  }
+  const parsePrice = (price) => `${parseFloat(price).toFixed(0)}`;
+  const {
+    features,
+    featuresRedemption,
+    planName,
+    displayName,
+    detailModalHeader,
+    detailModalBody,
+    promoDetailModalBody,
+    detailModalBody5G,
+    detailModalBodyLTE,
+    useBrandLogoNamming,
+    imageUrl,
+    youtTubePromoBanner,
+    youTubePricingTextLabel,
+    promoBannerDetailsModalHeader,
+    promoBannerDetailsModalContent,
+    superscriptContent,
+  } = addonRefData;
+  return {
+    title: planName || displayName,
+    newPrice: serviceData?.skuDetails?.categoryType?.toLowerCase()?.includes('whw')
+      ? serviceData?.skuDetails?.categoryType?.toLowerCase()?.includes('whwplus') && parsePrice(serviceData?.skuDetails?.priceText) === '0'
+        ? '5'
+        : parsePrice(serviceData.skuDetails?.priceText)
+      : serviceData.skuDetails?.priceText,
+    features: isWHWP2() ? featuresRedemption : features,
+    pricingText: 'Included',
+    oldPrice: serviceData?.skuDetails?.categoryType?.toLowerCase()?.includes('whw')
+      ? parsePrice(serviceData?.skuDetails?.regularPrice)
+      : serviceData?.skuDetails?.regularPrice,
+    cap: addonRefData?.cap,
+    color: addonRefData?.color,
+    type: serviceData.type,
+    addonProductData: serviceData,
+    detailModalHeader,
+    detailModalBody,
+    promoDetailModalBody,
+    detailModalBody5G,
+    detailModalBodyLTE,
+    useBrandLogoNamming,
+    imageUrl,
+    discountAvailed: serviceData?.skuDetails?.categoryType?.toLowerCase()?.includes('whw')
+      ? serviceData?.skuDetails?.categoryType?.toLowerCase()?.includes('whwplus') && parsePrice(serviceData?.skuDetails?.discountPrice) !== '10'
+        ? '10'
+        : parsePrice(serviceData?.skuDetails?.discountPrice)
+      : serviceData?.skuDetails?.discountPrice,
+    addonRefData,
+    youtTubePromoBanner,
+    youTubePricingTextLabel,
+    promoBannerDetailsModalHeader,
+    promoBannerDetailsModalContent,
+    superscriptContent,
+  };
+};
