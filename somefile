@@ -1,0 +1,139 @@
+import { prepareTilesDataServiceClone } from './yourFilePath'; // replace with the actual file path
+import { getSession } from '../../../../../common/Helpers';
+import { getProductRefData } from '../../../../../../utils/plansReference';
+import { store } from '../../../../../../configureStore';
+
+// Mock the required functions and data
+jest.mock('../../../../../common/Helpers', () => ({
+  getSession: jest.fn(),
+  isWHWP2: jest.fn(),
+}));
+
+jest.mock('../../../../../../utils/plansReference', () => ({
+  getProductRefData: jest.fn(),
+}));
+
+jest.mock('../../../../../../configureStore', () => ({
+  store: {
+    dispatch: jest.fn(),
+  },
+}));
+
+describe('prepareTilesDataServiceClone', () => {
+  const mockProps = {
+    plansReferenceData: [],
+    cartDetails: {
+      dueTodayList: [],
+      dueMonthlyList: [],
+    },
+    selectedProdID: '12345',
+    addOnLoadingDone: true,
+  };
+
+  const mockPassthroughState = {
+    props: mockProps,
+    state: {
+      notificationCalled: false,
+      hideNotificationCalled: false,
+    },
+    changeSkip: jest.fn(),
+    showNotification: jest.fn(),
+    hideNotification: jest.fn(),
+    setTimeOutCall: jest.fn(),
+  };
+
+  beforeEach(() => {
+    jest.clearAllMocks();
+  });
+
+  it('should handle homePhoneService type', () => {
+    const addonProducts = [
+      {
+        type: 'homePhoneService',
+        skuDetails: {
+          sorId: 'sorId1',
+          productId: 'productId1',
+        },
+      },
+    ];
+
+    getProductRefData.mockReturnValue([{ displayName: 'Home Phone Plan', sorId: 'sorId1' }]);
+
+    const result = prepareTilesDataServiceClone(addonProducts, mockProps.cartDetails, mockProps.selectedProdID, mockProps.addOnLoadingDone, mockPassthroughState);
+
+    expect(result).toEqual([{ sorId1: { quantity: '1', productId: 'productId1', sorId: 'sorId1' } }]);
+    expect(mockPassthroughState.changeSkip).toHaveBeenCalledWith(true);
+  });
+
+  it('should handle whwServices type', () => {
+    const addonProducts = [
+      {
+        type: 'whwServices',
+        skuDetails: {
+          sorId: 'sorId2',
+          productId: 'productId2',
+        },
+      },
+    ];
+
+    const cartDetails = {
+      dueTodayList: [{ sorId: 'sorId2', itemType: 'whwPlus' }],
+      dueMonthlyList: [{ sorId: 'sorId2', itemType: 'whwPlus' }],
+    };
+
+    getProductRefData.mockReturnValue([{ displayName: 'WHW Plan', sorId: 'sorId2' }]);
+
+    const result = prepareTilesDataServiceClone(addonProducts, cartDetails, mockProps.selectedProdID, mockProps.addOnLoadingDone, mockPassthroughState);
+
+    expect(result).toEqual([{ sorId2: { quantity: '1', productId: 'productId2', sorId: 'sorId2' } }]);
+    expect(mockPassthroughState.changeSkip).toHaveBeenCalledWith(true);
+  });
+
+  it('should handle other types', () => {
+    const addonProducts = [
+      {
+        type: 'otherService',
+        skuDetails: {
+          sorId: 'sorId3',
+          productId: 'productId3',
+        },
+      },
+    ];
+
+    const cartDetails = {
+      dueTodayList: [],
+      dueMonthlyList: [{ sorId: 'sorId3' }],
+    };
+
+    getProductRefData.mockReturnValue([{ displayName: 'Other Service Plan', sorId: 'sorId3' }]);
+
+    const result = prepareTilesDataServiceClone(addonProducts, cartDetails, mockProps.selectedProdID, mockProps.addOnLoadingDone, mockPassthroughState);
+
+    expect(result).toEqual([{ sorId3: { quantity: '1', productId: 'productId3', sorId: 'sorId3' } }]);
+    expect(mockPassthroughState.changeSkip).toHaveBeenCalledWith(true);
+  });
+
+  it('should handle missing planInfo gracefully', () => {
+    const addonProducts = [
+      {
+        type: 'whwServices',
+        skuDetails: {
+          sorId: 'sorId4',
+          productId: 'productId4',
+        },
+      },
+    ];
+
+    const cartDetails = {
+      dueTodayList: [{ sorId: 'sorId4', itemType: 'whwPlus' }],
+      dueMonthlyList: [{ sorId: 'sorId4', itemType: 'whwPlus' }],
+    };
+
+    getProductRefData.mockReturnValue([]);
+
+    const result = prepareTilesDataServiceClone(addonProducts, cartDetails, mockProps.selectedProdID, mockProps.addOnLoadingDone, mockPassthroughState);
+
+    expect(result).toEqual([{ sorId4: { quantity: '1', productId: 'productId4', sorId: 'sorId4' } }]);
+    expect(mockPassthroughState.changeSkip).toHaveBeenCalledWith(true);
+  });
+});
