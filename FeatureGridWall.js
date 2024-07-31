@@ -3,44 +3,38 @@ import { getProductRefData } from '../../../../../../utils/plansReference';
 
 jest.mock('../../../../../../utils/plansReference');
 
-describe('getAddonsRefData', () => {
-    const plansReferenceData = [
-        {
-            sorId: 'LVSKIHP',
-            productId: 'LVSKIHP',
-            displayName: 'Plan 1',
-            planName: 'Plan One'
-        },
-        {
-            sorId: 'ASK-STI6220',
-            productId: 'ASK-STI6220',
-            displayName: 'Plan 2',
-            planName: 'Plan Two'
-        }
-    ];
-
-    const accessoryDetails = [
-        {
-            skuDetails: {
+describe('Render getAddonsRefData', () => {
+    test('Test getAddonsRefData', () => {
+        const accessoryDetails = [
+            {
+                skuDetails: { sorId: 'LVSKIHP', productId: 'LVSKIHP' }
+            },
+            {
+                skuDetails: { sorId: 'ASK-STI6220', productId: 'ASK-STI6220' }
+            }
+        ];
+        
+        const plansReferenceData = {
+            'LVSKIHP': {
                 sorId: 'LVSKIHP',
-                productId: 'LVSKIHP'
-            }
-        },
-        {
-            skuDetails: {
+                productId: 'LVSKIHP',
+                displayName: 'Plan 1',
+                planName: 'Plan One'
+            },
+            'ASK-STI6220': {
                 sorId: 'ASK-STI6220',
-                productId: 'ASK-STI6220'
+                productId: 'ASK-STI6220',
+                displayName: 'Plan 2',
+                planName: 'Plan Two'
             }
-        }
-    ];
+        };
 
-    it('should return product reference data for given accessory details', () => {
         getProductRefData.mockImplementation((sorId, productId, plansReferenceData) => {
-            return plansReferenceData.filter(plan => plan.sorId === sorId && plan.productId === productId);
+            return [plansReferenceData[sorId]];
         });
 
         const result = getAddonsRefData(accessoryDetails, plansReferenceData);
-        
+
         expect(result).toEqual([
             {
                 sorId: 'LVSKIHP',
@@ -57,24 +51,78 @@ describe('getAddonsRefData', () => {
         ]);
     });
 
-    it('should return an empty array if accessoryDetails is empty', () => {
-        const result = getAddonsRefData([], plansReferenceData);
+    test('Test getAddonsRefData with empty accessoryDetails', () => {
+        const accessoryDetails = [];
+        const plansReferenceData = {
+            'LVSKIHP': {
+                sorId: 'LVSKIHP',
+                productId: 'LVSKIHP',
+                displayName: 'Plan 1',
+                planName: 'Plan One'
+            },
+            'ASK-STI6220': {
+                sorId: 'ASK-STI6220',
+                productId: 'ASK-STI6220',
+                displayName: 'Plan 2',
+                planName: 'Plan Two'
+            }
+        };
+
+        const result = getAddonsRefData(accessoryDetails, plansReferenceData);
+
         expect(result).toEqual([]);
     });
 
-    it('should return an empty array if plansReferenceData is empty', () => {
-        const result = getAddonsRefData(accessoryDetails, []);
+    test('Test getAddonsRefData with empty plansReferenceData', () => {
+        const accessoryDetails = [
+            {
+                skuDetails: { sorId: 'LVSKIHP', productId: 'LVSKIHP' }
+            },
+            {
+                skuDetails: { sorId: 'ASK-STI6220', productId: 'ASK-STI6220' }
+            }
+        ];
+        
+        const plansReferenceData = {};
+
+        const result = getAddonsRefData(accessoryDetails, plansReferenceData);
+
         expect(result).toEqual([]);
     });
 
-    it('should handle undefined accessoryDetails gracefully', () => {
+    test('Test getAddonsRefData with undefined accessoryDetails', () => {
+        const plansReferenceData = {
+            'LVSKIHP': {
+                sorId: 'LVSKIHP',
+                productId: 'LVSKIHP',
+                displayName: 'Plan 1',
+                planName: 'Plan One'
+            },
+            'ASK-STI6220': {
+                sorId: 'ASK-STI6220',
+                productId: 'ASK-STI6220',
+                displayName: 'Plan 2',
+                planName: 'Plan Two'
+            }
+        };
+
         const result = getAddonsRefData(undefined, plansReferenceData);
+
         expect(result).toEqual([]);
     });
 
-    it('should handle undefined plansReferenceData gracefully', () => {
+    test('Test getAddonsRefData with undefined plansReferenceData', () => {
+        const accessoryDetails = [
+            {
+                skuDetails: { sorId: 'LVSKIHP', productId: 'LVSKIHP' }
+            },
+            {
+                skuDetails: { sorId: 'ASK-STI6220', productId: 'ASK-STI6220' }
+            }
+        ];
+        
         const result = getAddonsRefData(accessoryDetails, undefined);
+
         expect(result).toEqual([]);
     });
 });
-
