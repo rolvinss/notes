@@ -1,54 +1,58 @@
-import React from "react";
-import PropTypes from 'prop-types';
-import { Modal, ModalTitle,ModalFooter,ModalBody } from "@vds/modals";
-import { Title, Body } from "@vds/typography";
-import { Button } from "@vds/buttons";
-import styled from "styled-components";
-import { isIpad } from "onevzsoemfeframework/DomService";
+import React from 'react';
+import { render, screen, fireEvent } from '@testing-library/react';
+import '@testing-library/jest-dom/extend-expect';
+import ApplePerkInfoModal from './ApplePerkInfoModal';
 
-const TextLinkWrapper = styled.div`
-  padding: 1rem 0 0.5rem 0;
-  display: flex;
-`;
-function ApplePerkInfoModal({ isOpen, onClose }) {
-    return(
-        <Modal           
-          surface="light"
-          onOpenedChange={(opened) => { if (!opened) onClose(false) }}
-          hideCloseButton={false}
-          disableAnimation={false}
-          fullScreenDialog={isIpad()}
-          disableOutsideClick={false}
-          ariaLabel="Important information Modal"
-          opened = {isOpen}
-          width = "100%"
-          >
-        <ModalTitle>
-          <Title size="large" primitive="span" bold>
-          Important information
-          </Title>
-        </ModalTitle>
-        <ModalBody>
-          <Body use="primary" size="large">
-            <p>
-              To start enjoying this product, you must have an iPhone with iOS 14 or later, an iPad with iPadOS 14 or later, or a Mac with macOS Big Sur or later.
-            </p>
-          </Body>
-      </ModalBody>
-      <ModalFooter>
-      <TextLinkWrapper>
-      <Button primary size="large" onClick={()=>onClose(false)} data-testid="CancelButton">
-          Got it
-      </Button>
-      </TextLinkWrapper>
-      </ModalFooter>
-      </Modal>)
-}
+// Mock the isIpad function to control its return value in tests
+jest.mock('onevzsoemfeframework/DomService', () => ({
+  isIpad: jest.fn(),
+}));
 
-ApplePerkInfoModal.propTypes = {
-    isOpen: PropTypes.bool,
-    onClose: PropTypes.func,
-}
-    
-export default ApplePerkInfoModal;
-  
+describe('ApplePerkInfoModal', () => {
+  const mockOnClose = jest.fn();
+
+  beforeEach(() => {
+    jest.clearAllMocks();
+  });
+
+  test('renders modal when isOpen is true', () => {
+    render(<ApplePerkInfoModal isOpen={true} onClose={mockOnClose} />);
+    expect(screen.getByRole('dialog')).toBeVisible();
+    expect(screen.getByText('Important information')).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        'To start enjoying this product, you must have an iPhone with iOS 14 or later, an iPad with iPadOS 14 or later, or a Mac with macOS Big Sur or later.'
+      )
+    ).toBeInTheDocument();
+    expect(screen.getByTestId('CancelButton')).toBeInTheDocument();
+  });
+
+  test('does not render modal when isOpen is false', () => {
+    render(<ApplePerkInfoModal isOpen={false} onClose={mockOnClose} />);
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+  });
+
+  test('calls onClose when Got it button is clicked', () => {
+    render(<ApplePerkInfoModal isOpen={true} onClose={mockOnClose} />);
+    fireEvent.click(screen.getByTestId('CancelButton'));
+    expect(mockOnClose).toHaveBeenCalledWith(false);
+  });
+
+  test('calls onClose when modal is closed', () => {
+    render(<ApplePerkInfoModal isOpen={true} onClose={mockOnClose} />);
+    fireEvent.click(screen.getByRole('dialog').querySelector('[aria-label="Close"]'));
+    expect(mockOnClose).toHaveBeenCalledWith(false);
+  });
+
+  test('renders modal in full-screen mode when on an iPad', () => {
+    require('onevzsoemfeframework/DomService').isIpad.mockReturnValue(true);
+    render(<ApplePerkInfoModal isOpen={true} onClose={mockOnClose} />);
+    expect(screen.getByRole('dialog')).toHaveClass('full-screen');
+  });
+
+  test('renders modal in default mode when not on an iPad', () => {
+    require('onevzsoemfeframework/DomService').isIpad.mockReturnValue(false);
+    render(<ApplePerkInfoModal isOpen={true} onClose={mockOnClose} />);
+    expect(screen.getByRole('dialog')).not.toHaveClass('full-screen');
+  });
+});
