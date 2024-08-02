@@ -1,174 +1,53 @@
-import { getAddonData } from '../../../../../../../components/Web/Addons/redesign/Components/FunctionalRedesign/addonsCommon';
+import React,{ Component }from "react";
+import { Modal, ModalTitle,ModalFooter,ModalBody } from "@vds3/modals";
+import { Title, Body } from "@vds3/typography";
+import { Button } from "@vds/buttons";
+import styled from "styled-components";
+import { isIpad } from "../../../services/dom.service";
 
-describe('Render getAddonData', () => {
-    test('Test getAddonData with valid serviceData and refData', () => {
-        const serviceData = {
-            skuDetails: {
-                sorId: 'LVSKIHP',
-                productId: 'LVSKIHP',
-                categoryType: 'whw',
-                priceText: '10',
-                regularPrice: '20',
-                discountPrice: '5',
-            },
-            type: 'whwServices',
-        };
-
-        const refData = [
-            {
-                sorId: 'LVSKIHP',
-                productId: 'LVSKIHP',
-                features: 'Feature 1',
-                featuresRedemption: 'Feature 2',
-                planName: 'Plan A',
-                displayName: 'Plan A Display',
-                detailModalHeader: 'Header',
-                detailModalBody: 'Body',
-                promoDetailModalBody: 'Promo Body',
-                detailModalBody5G: '5G Body',
-                detailModalBodyLTE: 'LTE Body',
-                useBrandLogoNamming: 'Brand Logo',
-                imageUrl: 'http://example.com/image.jpg',
-                youtTubePromoBanner: 'YouTube Banner',
-                youTubePricingTextLabel: 'YouTube Pricing Text',
-                promoBannerDetailsModalHeader: 'Promo Header',
-                promoBannerDetailsModalContent: 'Promo Content',
-                superscriptContent: 'Superscript',
-            },
-        ];
-
-        const expectedData = {
-            title: 'Plan A',
-            newPrice: '10',
-            features: 'Feature 2',
-            pricingText: 'Included',
-            oldPrice: '20',
-            cap: undefined,
-            color: undefined,
-            type: 'whwServices',
-            addonProductData: serviceData,
-            detailModalHeader: 'Header',
-            detailModalBody: 'Body',
-            promoDetailModalBody: 'Promo Body',
-            detailModalBody5G: '5G Body',
-            detailModalBodyLTE: 'LTE Body',
-            useBrandLogoNamming: 'Brand Logo',
-            imageUrl: 'http://example.com/image.jpg',
-            discountAvailed: '5',
-            addonRefData: refData[0],
-            youtTubePromoBanner: 'YouTube Banner',
-            youTubePricingTextLabel: 'YouTube Pricing Text',
-            promoBannerDetailsModalHeader: 'Promo Header',
-            promoBannerDetailsModalContent: 'Promo Content',
-            superscriptContent: 'Superscript',
-        };
-
-        const result = getAddonData(serviceData, refData);
-        expect(result).toEqual(expectedData);
-    });
-
-    test('Test getAddonData with missing refData', () => {
-        const serviceData = {
-            skuDetails: {
-                sorId: 'LVSKIHP',
-                productId: 'LVSKIHP',
-                categoryType: 'whw',
-                priceText: '10',
-                regularPrice: '20',
-                discountPrice: '5',
-            },
-            type: 'whwServices',
-        };
-
-        const refData = [];
-
-        const expectedData = {};
-
-        const result = getAddonData(serviceData, refData);
-        expect(result).toEqual(expectedData);
-    });
-
-    test('Test getAddonData with missing serviceData', () => {
-        const serviceData = null;
-
-        const refData = [
-            {
-                sorId: 'LVSKIHP',
-                productId: 'LVSKIHP',
-                features: 'Feature 1',
-                featuresRedemption: 'Feature 2',
-                planName: 'Plan A',
-                displayName: 'Plan A Display',
-                detailModalHeader: 'Header',
-                detailModalBody: 'Body',
-                promoDetailModalBody: 'Promo Body',
-                detailModalBody5G: '5G Body',
-                detailModalBodyLTE: 'LTE Body',
-                useBrandLogoNamming: 'Brand Logo',
-                imageUrl: 'http://example.com/image.jpg',
-                youtTubePromoBanner: 'YouTube Banner',
-                youTubePricingTextLabel: 'YouTube Pricing Text',
-                promoBannerDetailsModalHeader: 'Promo Header',
-                promoBannerDetailsModalContent: 'Promo Content',
-                superscriptContent: 'Superscript',
-            },
-        ];
-
-        const expectedData = {};
-
-        const result = getAddonData(serviceData, refData);
-        expect(result).toEqual(expectedData);
-    });
-
-    test('Test getAddonData with partial data', () => {
-        const serviceData = {
-            skuDetails: {
-                sorId: 'LVSKIHP',
-                productId: 'LVSKIHP',
-                categoryType: 'whw',
-                priceText: '10',
-                regularPrice: '20',
-                discountPrice: '5',
-            },
-            type: 'whwServices',
-        };
-
-        const refData = [
-            {
-                sorId: 'LVSKIHP',
-                productId: 'LVSKIHP',
-                features: 'Feature 1',
-                planName: 'Plan A',
-            },
-        ];
-
-        const expectedData = {
-            title: 'Plan A',
-            newPrice: '10',
-            features: 'Feature 1',
-            pricingText: 'Included',
-            oldPrice: '20',
-            cap: undefined,
-            color: undefined,
-            type: 'whwServices',
-            addonProductData: serviceData,
-            detailModalHeader: undefined,
-            detailModalBody: undefined,
-            promoDetailModalBody: undefined,
-            detailModalBody5G: undefined,
-            detailModalBodyLTE: undefined,
-            useBrandLogoNamming: undefined,
-            imageUrl: undefined,
-            discountAvailed: '5',
-            addonRefData: refData[0],
-            youtTubePromoBanner: undefined,
-            youTubePricingTextLabel: undefined,
-            promoBannerDetailsModalHeader: undefined,
-            promoBannerDetailsModalContent: undefined,
-            superscriptContent: undefined,
-        };
-
-        const result = getAddonData(serviceData, refData);
-        expect(result).toEqual(expectedData);
-    });
-});
+const TextLinkWrapper = styled.div`
+  padding: 1rem 0 0.5rem 0;
+  display: flex;
+`;
+class ApplePerkInfoModal extends Component{
+    constructor(props) {
+        super(props);
+    }
+    render(){
+      const {isOpen}= this.props;
+        return(
+          <Modal           
+          surface="light"
+          onOpenedChange={(opened) => { if (!opened) this.props.onClose() }}
+          hideCloseButton={false}
+          disableAnimation={false}
+          fullScreenDialog={isIpad()}
+          disableOutsideClick={false}
+          ariaLabel="Important information Modal"
+          opened = {isOpen}
+          width = "100%"
+          >
+        <ModalTitle>
+          <Title size="large" primitive="span" bold>
+          Important information
+          </Title>
+        </ModalTitle>
+        <ModalBody>
+          <Body use="primary" size="large">
+            <p>
+              To start enjoying this product, you must have an iPhone with iOS 14 or later, an iPad with iPadOS 14 or later, or a Mac with macOS Big Sur or later.
+            </p>
+          </Body>
+      </ModalBody>
+      <ModalFooter>
+      <TextLinkWrapper>
+      <Button primary size="large" onClick={()=>this.props.onClose()} data-testid="CancelButton">
+          Got it
+      </Button>
+      </TextLinkWrapper>
+      </ModalFooter>
+      </Modal>)
+    }
+}
+export default ApplePerkInfoModal;
+  
