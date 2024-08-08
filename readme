@@ -164,7 +164,7 @@ HttpService.interceptors.request.use((req) => {
   }
   if(window.location.hostname.includes("localhost")){
     
-   request.headers["sso_jwt"] = "eyJ0eXAiOiJKV1QiLCJhbGciOiJSUzI1NiJ9.eyJhdWQiOiJNQ0YiLCJ1aWQiOiIzMTUzNDUyMTc3cmVnVG9vbCIsImdpdmVuTmFtZSI6IkxlYm93c2tpIiwiaXNzIjoiaHR0cHM6Ly9zc28tbnAuZWJpei52ZXJpem9uLmNvbSIsImV4cCI6MTcyMjYxMTc5MCwidnp3QWNjb3VudE51bWJlciI6IjA3MjUzMjM5NDYwMDAwMDEiLCJpYXQiOjE3MjI2MDgxOTB9.ThGqqAbp8YyMONBDXaU8nJ3q1TWynQ0bArki-u-5VKvyPBJHAnHre3fzt9vIPQLf6Q-gTWJaAihpUzdMVH0P9bt0H-Ew-IeU8UQiFXFnkdCRQjD3i13nj698pfocgYRvQqLo-eTd4g8AwVh8nQwh7tVueZyTOjhd-SHabWPq08NUxvAbFk4fQ3-_xiIrkFW-WRQ0_mBsSgc2ii8z3s1McG0bj905he7p8ApMRZM4OhoDqNVa72VutVeBJlOIRcp7CCJHNhMkf2PBLw9FDBuQtqsLfDEaFeALcE0_3nbbjZFjToBz2EdS5fOxURahk96ZlGGB4VuzbrMuwn6O2W8Okw";
+   request.headers["sso_jwt"] = "eyJ0eXAiOiJKV1QiLCJhbGciOiJSUzI1NiJ9.eyJhdWQiOiJNQ0YiLCJ1aWQiOiIzMTUzNDUyMTc3cmVnVG9vbCIsImdpdmVuTmFtZSI6IkxlYm93c2tpIiwiaXNzIjoiaHR0cHM6Ly9zc28tbnAuZWJpei52ZXJpem9uLmNvbSIsImV4cCI6MTcyMzA5MjI0Miwidnp3QWNjb3VudE51bWJlciI6IjA3MjUzMjM5NDYwMDAwMDEiLCJpYXQiOjE3MjMwODg2NDJ9.QdxeqlFKuGajq_H4btFwDhDzMFcV0OlXgJGBI3jhefFbnguUP4k4OpAPa2Wteoz3JRgsGB4NERBsphnopX7hvLOrs-i_s3Y7oVYxd6t2ShwETDjuBdyyYcIqZA8TW_Cy8lyEa7BPlFn8qRko-I3OlbP3RygHLpuwHq1MCanrYIbAtxWt6Xc5udYBzvrhjOaVUk1fb5rf48RLOI4qxy-BcKr1soK8rVgTlz3D1rc6eXZYaIS3y-ZH0xLrd163A2_oyiKqPQd13U6Nv3-aVt1qgfFiHbY39xXR28TvEKhI8iGqQfLwMZX_g5RWAcQyJHExRWdqcRWxVvxaWv4kn4pSnA";
     request.headers["assisted_ig_session"] = sessionStorage.getItem("assisted_ig_session");
     request.headers["soeguisubkey"] = "ca65cfaf-5883-414f-9fb2-2517eaa5dfd4";
     request.headers["soeguivalue"] = "eyJhbGciOiJSUzI1NiJ9.eyJyZWdObyI6IjAxIiwicmVwUm9sZSI6IlBPU1NZU1RTVCIsInBvc1ZlcnNpb24iOiIyLjAiLCJjaGFubmVsIjoiT01OSS1SRVRBSUwiLCJtYXZlcmlja0xvY2F0aW9uIjpmYWxzZSwiY3JlZGl0QXBwTnVtIjoiNDEzMjgwMTE0IiwiZW1haWxJZCI6IiIsIk9SREVSTE9DIjoiMDAyNjMwMSIsIkhPTUVMT0MiOiIwMDI2MzAxIiwibG9nZ2VkSW5Vc2VyIjoiS1VNQUdPMiIsImN1c3RvbWVyVHlwZSI6Ik4iLCJjYWxsUmVhc29uIjoiQ29uc3VtZXIiLCJtdG4iOiIiLCJhY2NvdW50TnVtYmVyIjoiIiwicmVwSWQiOiJFTkMiLCJpc0hvbWVTYWxlcyI6ImZhbHNlIiwicmVhc29uRm9yVmlzaXQiOiJDb25zdW1lciIsInF1aWNrVmlldyI6eyJwZW5kaW5nT3JkZXJDb3VudCI6IjAiLCJlbGlnaWJsZUxpbmVDb3VudCI6IjAiLCJwYXN0RHVlIjoiMCIsImJ0YUFtb3VudCI6IjAiLCJkcEVsaWdpYmlsaXR5IjoiTm90IFZlcmlmaWVkIiwidG1wbWRFbGlnaWJsZSI6ZmFsc2UsInRhaEVsaWdpYmxlIjoiVEFIIEVsaWdpYmxlIn0sInZlcmlmaWVkTmFtZSI6ImRmZWQgZXJlIiwiaG9tZVNhbGVzQWRkcmVzcyI6IntcInN0cmVldE51bWJlclwiOlwiMVwiLFwic3RyZWV0TmFtZVwiOlwiVkVSSVpPTlwiLFwic3RyZWV0VHlwZVwiOlwiV0FZXCIsXCJzdHJlZXRBZGRyZXNzXCI6XCIxIFZFUklaT04gV0FZIFwiLFwic3RhdGVcIjpcIk5KXCIsXCJjaXR5XCI6XCJCQVNLSU5HIFJJREdFXCIsXCJ6aXBDb2RlXCI6XCIwNzkyMFwiLFwiemlwQ29kZVBsdXM0XCI6XCIxMDI1XCIsXCJ1bml0VHlwZVwiOlwiXCIsXCJhcHROdW1iZXJcIjpcIlwiLFwibXVsdGlwbGVBZGRyZXNzQ29uZmlybVwiOmZhbHNlLFwibGF0aXR1ZGVcIjpcIlwiLFwibG9uZ2l0dWRlXCI6XCJcIixcInZlbmRvcktleVwiOlwiXCIsXCJldmVudENvcnJlbGF0aW9uSWRcIjpcIjA3OTIwXzE3MjI1MDIxMjMxMTJfNDc3XCIsXCJsb2NhdGlvblR5cGVcIjpcIlwiLFwiQ0JhbmRTa3VcIjpcIkFTSy1OQ1ExMzM4RkFcIixcInByaW9yUXVhbGlmaWNhdGlvblwiOntcImZpdmVHSG9tZVF1YWxpZmllZFwiOmZhbHNlLFwiTFRFUXVhbGlmaWVkXCI6dHJ1ZSxcImNiYW5kUXVhbGlmaWVkXCI6dHJ1ZSxcInRhbmdsZXdvb2RRdWFsaWZpZWRcIjpmYWxzZX0sXCJsZWFkVHlwZVwiOlwiXCIsXCJpc0J1eWVyc1JpZ2h0VG9DYW5jZWxcIjpcIllcIixcIkxURVF1YWxpZmllZFwiOmZhbHNlLFwiY0JhbmRRdWFsaWZpZWRcIjp0cnVlLFwiZml2ZUdIb21lUXVhbGlmaWVkXCI6ZmFsc2UsXCJidW5kbGVzXCI6W119IiwiaWF0IjoxNzIyNTAyMTI4fQ.Xhv_wePcxzEVmwotPGauFC8uKc7_bxxZgQFmHACtsnfN84MJyV9yzA9WKPeqM7CjnnyoxTDQi4QF4DI7tP7U9_kZJeWJIdvV7XXKx6Wtq0LmHKCOHmCZIqG2UUeHxN73skfp_MkOhaHkm385bjl36SN8IFoX37azAKR2jXlBeVB1HE5NGZFIEfs9JrQFyIU_DFvTMAoNJ8-blXrP5zf1PJE-p61I8RlwT-o7hJYRSgUw60HJxlk9bJ-1cj5si_gs4xV2W5OrScV9GUHjH4B66rkiN_YG_2zlTEIrikuXJu5sF3nTozoZAg2ZuxWQtJ32Oo1dBZCQYB3om4a5OYlDSg";
@@ -209,21 +209,15 @@ HttpService.interceptors.response.use(response => {
     Trace.traceSaveInteraction();
   }
   let flowName = response?.data?.serviceBody?.serviceResponse?.context?.cartInfo?.flow;
-  let rcFlowname = response?.data?.data?.cart?.flow;
-  console.log('Flowname from response -- ', flowName, 'rcFlowname----', rcFlowname, response, response.config.url);
-  if (flowName === undefined && rcFlowname === undefined &&  response.config.url.includes("quoteservice/addNewQuote")) {
-    console.log(' rcFlowname and flowname are empty setting empty in redux store');
-    window.store.dispatch(apiConsoleActions.getFlowName({
-      flowName: ""
-    }));
-  }
+  let rcFlowname = response?.data?.data?.cart?.flow ;
+  console.log('Flowname from response -- ',flowName ,'rcFlowname----',rcFlowname ,response , response.config.url );
   if (flowName) {
-    console.log(' API flowname ', flowName);
+    console.log(' API flowname ',flowName);
     window.store.dispatch(apiConsoleActions.getFlowName({
       flowName: flowName
     }));
-  } else if (rcFlowname) {
-    console.log('RC flowname ', rcFlowname);
+  }else if(rcFlowname){
+    console.log('RC flowname ',rcFlowname);
     window.store.dispatch(apiConsoleActions.getFlowName({
       flowName: rcFlowname
     }));
